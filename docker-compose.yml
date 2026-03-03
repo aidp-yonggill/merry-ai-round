@@ -1,0 +1,16 @@
+services:
+  daemon:
+    build:
+      context: .
+      dockerfile: packages/daemon/Dockerfile
+    ports:
+      - "3141:3141"
+    volumes:
+      - ./data:/app/data
+      - ./agents:/app/agents
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - MERRY_ROOT=/app
+    restart: unless-stopped

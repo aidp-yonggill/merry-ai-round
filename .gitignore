@@ -1,0 +1,25 @@
+node_modules/
+dist/
+.turbo/
+.next/
+.vercel/
+*.tsbuildinfo
+
+# Data
+data/merry.db
+data/memory/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# OMC
+.omc/

@@ -1,0 +1,29 @@
+{
+  "name": "@merry/daemon",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@merry/shared": "workspace:*",
+    "@anthropic-ai/sdk": "^0.52.0",
+    "express": "^5.1.0",
+    "cors": "^2.8.5",
+    "gray-matter": "^4.0.3",
+    "better-sqlite3": "^11.8.0",
+    "nanoid": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/cors": "^2.8.17",
+    "@types/better-sqlite3": "^7.6.12",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
