@@ -40,7 +40,7 @@ export function DiscussionControls({ roomId }: DiscussionControlsProps) {
   }, []);
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
       <Badge
         variant={
           status === 'running' ? 'default' :

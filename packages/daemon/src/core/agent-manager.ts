@@ -2,22 +2,43 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { AgentDefinition, AgentState } from '@merry/shared';
 import { AgentInstance } from '../agent/agent-instance.js';
 import { AgentConfigLoader } from '../agent/agent-config-loader.js';
+import type { MemoryStore } from '../agent/memory-store.js';
+import type { SqliteStore } from '../storage/sqlite-store.js';
 
 export class AgentManager {
   private instances: Map<string, AgentInstance> = new Map();
   private configLoader: AgentConfigLoader;
   private client: Anthropic;
+  private memoryStore: MemoryStore | null = null;
+  private sqliteStore: SqliteStore | null = null;
 
   constructor(agentsDir: string) {
     this.configLoader = new AgentConfigLoader(agentsDir);
     this.client = new Anthropic();
   }
 
+  setMemoryStore(store: MemoryStore): void {
+    this.memoryStore = store;
+  }
+
+  setSqliteStore(store: SqliteStore): void {
+    this.sqliteStore = store;
+  }
+
   loadAll(): void {
     const definitions = this.configLoader.loadAll();
     for (const def of definitions) {
       if (!this.instances.has(def.id)) {
-        this.instances.set(def.id, new AgentInstance(def, this.client));
+        const instance = new AgentInstance(def, this.client, this.memoryStore ?? undefined);
+
+        // Restore cumulative stats from SQLite
+        if (this.sqliteStore) {
+          const stats = this.sqliteStore.getAgentCumulativeStats(def.id);
+          instance.totalTokensUsed = stats.totalTokens;
+          instance.totalCostUsd = stats.totalCostUsd;
+        }
+
+        this.instances.set(def.id, instance);
       }
     }
     console.log(`[AgentManager] Loaded ${definitions.length} agents: ${definitions.map(d => d.id).join(', ')}`);

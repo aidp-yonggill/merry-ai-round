@@ -45,8 +45,8 @@ export function MessageBubble({ message, agent, streamingContent }: MessageBubbl
   }
 
   return (
-    <div className={cn('group flex gap-3 px-4 py-2 hover:bg-accent/30 transition-colors', isUser && 'flex-row-reverse')}>
-      <Avatar className="mt-0.5 h-8 w-8 shrink-0">
+    <div className={cn('group flex gap-2 md:gap-3 px-3 md:px-4 py-1.5 md:py-2 hover:bg-accent/30 transition-colors', isUser && 'flex-row-reverse')}>
+      <Avatar className="mt-0.5 h-7 w-7 md:h-8 md:w-8 shrink-0">
         <AvatarFallback
           className={cn('text-sm', isUser ? 'bg-primary text-primary-foreground' : '')}
           style={!isUser ? { backgroundColor: agentColor + '20', color: agentColor } : undefined}
@@ -54,7 +54,7 @@ export function MessageBubble({ message, agent, streamingContent }: MessageBubbl
           {isUser ? 'U' : agentAvatar}
         </AvatarFallback>
       </Avatar>
-      <div className={cn('flex min-w-0 max-w-[75%] flex-col', isUser && 'items-end')}>
+      <div className={cn('flex min-w-0 max-w-[85%] md:max-w-[75%] flex-col', isUser && 'items-end')}>
         <div className="flex items-baseline gap-2">
           <span
             className="text-sm font-semibold"

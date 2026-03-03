@@ -1,11 +1,20 @@
 import type { AgentDefinition, ChatMessage } from '@merry/shared';
 
 export class PromptBuilder {
-  buildSystemPrompt(agent: AgentDefinition, roomContext?: { name: string; members: string[] }): string {
+  buildSystemPrompt(
+    agent: AgentDefinition,
+    roomContext?: { name: string; members: string[] },
+    memoryContext?: string,
+  ): string {
     const parts: string[] = [];
 
     // Persona
     parts.push(agent.persona);
+
+    // Memory (from persistent store)
+    if (memoryContext) {
+      parts.push(`\n## Your Memory\n${memoryContext}`);
+    }
 
     // Room context
     if (roomContext) {

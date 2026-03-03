@@ -22,12 +22,13 @@ export function MessageList({ roomId }: MessageListProps) {
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const isMobile = window.matchMedia('(max-width: 767px)').matches;
+    bottomRef.current?.scrollIntoView({ behavior: isMobile ? 'auto' : 'smooth' });
   }, [messages.length, streamingMessages.size]);
 
   return (
-    <ScrollArea className="flex-1">
-      <div className="flex flex-col py-4">
+    <ScrollArea className="flex-1 [&>div]:touch-pan-y [&>div]:overscroll-contain">
+      <div className="flex flex-col py-2 md:py-4">
         {messages.length === 0 && (
           <div className="flex flex-1 items-center justify-center py-16">
             <p className="text-sm text-muted-foreground">

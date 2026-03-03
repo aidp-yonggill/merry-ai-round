@@ -112,7 +112,7 @@ export function ChatInput({ roomId }: ChatInputProps) {
   }, [text]);
 
   return (
-    <div className="relative border-t border-border px-4 py-3">
+    <div className="relative border-t border-border px-3 md:px-4 py-2 md:py-3">
       {/* Mention autocomplete */}
       {mentionQuery !== null && filteredAgents.length > 0 && (
         <div className="absolute bottom-full left-4 right-4 mb-1 rounded-md border border-border bg-popover p-1 shadow-lg">
@@ -143,13 +143,13 @@ export function ChatInput({ roomId }: ChatInputProps) {
           onKeyDown={handleKeyDown}
           placeholder="Type a message... (@ to mention an agent)"
           rows={1}
-          className="flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[44px] ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         />
         <Button
           size="icon"
           onClick={handleSend}
           disabled={!text.trim() || sending}
-          className="shrink-0"
+          className="shrink-0 h-11 w-11 md:h-9 md:w-9"
         >
           <Send className="h-4 w-4" />
         </Button>

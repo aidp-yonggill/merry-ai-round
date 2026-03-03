@@ -40,9 +40,11 @@ export function createServer(config: DaemonConfig): { app: express.Express; shut
   const memoryStore = new MemoryStore(config.dataDir);
   const sse = new SSEManager();
   const agentManager = new AgentManager(config.agentsDir);
+  agentManager.setMemoryStore(memoryStore);
+  agentManager.setSqliteStore(store);
   const roomManager = new RoomManager(store);
   const messageRouter = new MessageRouter(store, sse);
-  const discussionEngine = new DiscussionEngine(agentManager, messageRouter, sse, store);
+  const discussionEngine = new DiscussionEngine(agentManager, messageRouter, sse, store, memoryStore);
 
   // Load agents from disk
   agentManager.loadAll();

@@ -5,6 +5,7 @@ import { MessageRouter } from './message-router.js';
 import { TurnController } from './turn-controller.js';
 import { SSEManager } from '../api/sse/sse-manager.js';
 import { SqliteStore } from '../storage/sqlite-store.js';
+import type { MemoryStore } from '../agent/memory-store.js';
 
 export class DiscussionEngine extends EventEmitter {
   private agentManager: AgentManager;
@@ -12,6 +13,7 @@ export class DiscussionEngine extends EventEmitter {
   private turnController: TurnController;
   private sse: SSEManager;
   private store: SqliteStore;
+  private memoryStore: MemoryStore | null;
 
   private discussions: Map<string, DiscussionState> = new Map();
   private abortControllers: Map<string, AbortController> = new Map();
@@ -21,6 +23,7 @@ export class DiscussionEngine extends EventEmitter {
     messageRouter: MessageRouter,
     sse: SSEManager,
     store: SqliteStore,
+    memoryStore?: MemoryStore,
   ) {
     super();
     this.agentManager = agentManager;
@@ -28,6 +31,7 @@ export class DiscussionEngine extends EventEmitter {
     this.turnController = new TurnController();
     this.sse = sse;
     this.store = store;
+    this.memoryStore = memoryStore ?? null;
   }
 
   getState(roomId: string): DiscussionState {
@@ -117,9 +121,19 @@ export class DiscussionEngine extends EventEmitter {
     this.abortControllers.set(room.id, ac);
 
     try {
+      // Max turns per discussion (configurable per room, default 50)
+      const maxDiscussionTurns = 50;
+
       while (!ac.signal.aborted) {
         const state = this.discussions.get(room.id);
         if (!state || state.status !== 'running') break;
+
+        // Enforce discussion-level turn limit
+        if (state.totalTurns >= maxDiscussionTurns) {
+          console.log(`[DiscussionEngine] Room ${room.id} reached max turns (${maxDiscussionTurns})`);
+          this.updateStatus(room.id, 'stopped');
+          break;
+        }
 
         // Determine next speaker
         const recentMessages = this.store.getMessages(room.id, 20);
@@ -203,6 +217,23 @@ export class DiscussionEngine extends EventEmitter {
           state.turnHistory.push({ ...state.currentTurn });
           state.currentTurn = null;
           this.broadcastState(state);
+
+          // Extract facts from response for agent memory
+          this.extractAndStoreFacts(nextAgent, content, room.id);
+        } catch (err: any) {
+          if (err?.message?.includes('exceeded budget')) {
+            console.warn(`[DiscussionEngine] Agent ${nextAgent} budget exceeded, skipping`);
+            this.messageRouter.createMessage({
+              roomId: room.id,
+              role: 'system',
+              content: `${agent.definition.name} has exceeded their budget limit and will no longer participate.`,
+              metadata: { turnNumber },
+            });
+            state.currentTurn = null;
+            this.broadcastState(state);
+          } else {
+            throw err;
+          }
         } finally {
           agent.off('stream', onStream);
           agent.off('status', onStatus);
@@ -229,6 +260,46 @@ export class DiscussionEngine extends EventEmitter {
     if (state) {
       state.status = status;
       this.broadcastState(state);
+    }
+  }
+
+  private extractAndStoreFacts(agentId: string, content: string, roomId: string): void {
+    if (!this.memoryStore) return;
+
+    // Simple rule-based fact extraction from agent responses
+    const sentences = content.split(/[.!?]\s+/).filter(s => s.length > 20);
+    const factPatterns = [
+      /결론[은:]?\s*/i,
+      /중요한\s*점/i,
+      /핵심[은:]?\s*/i,
+      /요약하[면자]/i,
+      /therefore/i,
+      /in conclusion/i,
+      /key point/i,
+      /important(ly)?/i,
+      /recommend/i,
+      /suggest/i,
+    ];
+
+    const facts: string[] = [];
+    for (const sentence of sentences) {
+      if (factPatterns.some(p => p.test(sentence)) && facts.length < 3) {
+        facts.push(sentence.trim());
+      }
+    }
+
+    // If no pattern matches, take the last meaningful sentence as a conclusion
+    if (facts.length === 0 && sentences.length > 0) {
+      const last = sentences[sentences.length - 1].trim();
+      if (last.length > 30) facts.push(last);
+    }
+
+    for (const fact of facts) {
+      this.memoryStore.addFact(agentId, {
+        fact,
+        source: `room:${roomId}`,
+        timestamp: new Date().toISOString(),
+      });
     }
   }
 

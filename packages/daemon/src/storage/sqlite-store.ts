@@ -158,6 +158,13 @@ export class SqliteStore {
     `).run(agentId, roomId, tokensIn, tokensOut, costUsd, new Date().toISOString());
   }
 
+  getAgentCumulativeStats(agentId: string): { totalTokens: number; totalCostUsd: number } {
+    const row = this.db.prepare(
+      'SELECT COALESCE(SUM(tokens_in + tokens_out), 0) as total_tokens, COALESCE(SUM(cost_usd), 0) as total_cost FROM costs WHERE agent_id = ?'
+    ).get(agentId) as any;
+    return { totalTokens: row.total_tokens, totalCostUsd: row.total_cost };
+  }
+
   getCostSummary(): { totalUsd: number; byAgent: Record<string, number>; byRoom: Record<string, number> } {
     const total = this.db.prepare('SELECT COALESCE(SUM(cost_usd), 0) as total FROM costs').get() as any;
     const byAgent = this.db.prepare('SELECT agent_id, SUM(cost_usd) as total FROM costs GROUP BY agent_id').all() as any[];

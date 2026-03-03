@@ -7,29 +7,21 @@ import { Hash, Users, Plus, MessageSquare } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { useApiClient } from '@/hooks/useApiClient';
 import { cn } from '@/lib/utils';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 
-export function Sidebar() {
+function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const rooms = useStore((s) => s.rooms);
-  const setRooms = useStore((s) => s.setRooms);
-  const setAgents = useStore((s) => s.setAgents);
-  const connected = useStore((s) => s.connected);
-  const api = useApiClient();
   const pathname = usePathname();
 
-  useEffect(() => {
-    if (!connected) return;
-    api.listRooms().then(setRooms).catch(() => {});
-    api.listAgents().then(setAgents).catch(() => {});
-  }, [connected, api, setRooms, setAgents]);
-
   return (
-    <aside className="flex h-full w-60 shrink-0 flex-col border-r border-border bg-card">
+    <>
       <div className="flex items-center justify-between px-4 py-3">
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Rooms
         </span>
         <Link
           href="/rooms/new"
+          onClick={onNavigate}
           className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
         >
           <Plus className="h-3.5 w-3.5" />
@@ -47,6 +39,7 @@ export function Sidebar() {
             <Link
               key={room.id}
               href={`/rooms/${room.id}`}
+              onClick={onNavigate}
               className={cn(
                 'flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors',
                 isActive
@@ -70,6 +63,7 @@ export function Sidebar() {
       <div className="border-t border-border p-2">
         <Link
           href="/agents"
+          onClick={onNavigate}
           className={cn(
             'flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors',
             pathname === '/agents'
@@ -81,6 +75,41 @@ export function Sidebar() {
           <span>Agents</span>
         </Link>
       </div>
+    </>
+  );
+}
+
+export function Sidebar() {
+  const connected = useStore((s) => s.connected);
+  const setRooms = useStore((s) => s.setRooms);
+  const setAgents = useStore((s) => s.setAgents);
+  const api = useApiClient();
+
+  useEffect(() => {
+    if (!connected) return;
+    api.listRooms().then(setRooms).catch(() => {});
+    api.listAgents().then(setAgents).catch(() => {});
+  }, [connected, api, setRooms, setAgents]);
+
+  return (
+    <aside className="hidden md:flex h-full w-60 shrink-0 flex-col border-r border-border bg-card">
+      <SidebarContent />
     </aside>
+  );
+}
+
+export function MobileSidebar() {
+  const sidebarOpen = useStore((s) => s.sidebarOpen);
+  const setSidebarOpen = useStore((s) => s.setSidebarOpen);
+
+  return (
+    <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+      <SheetContent side="left" className="w-60 p-0 gap-0" showCloseButton={false}>
+        <SheetTitle className="sr-only">Navigation</SheetTitle>
+        <div className="flex h-full flex-col">
+          <SidebarContent onNavigate={() => setSidebarOpen(false)} />
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

@@ -42,9 +42,21 @@ export class MemoryStore {
     return JSON.parse(fs.readFileSync(file, 'utf-8'));
   }
 
-  addFact(agentId: string, fact: MemoryFact): void {
-    const facts = this.getFacts(agentId);
+  addFact(agentId: string, fact: MemoryFact, options?: { retentionDays?: number; maxEntries?: number }): void {
+    let facts = this.getFacts(agentId);
     facts.push(fact);
+
+    // Prune by retention period
+    const retentionDays = options?.retentionDays ?? 30;
+    const cutoff = Date.now() - retentionDays * 86400_000;
+    facts = facts.filter(f => new Date(f.timestamp).getTime() > cutoff);
+
+    // Prune by max entries (keep newest)
+    const maxEntries = options?.maxEntries ?? 100;
+    if (facts.length > maxEntries) {
+      facts = facts.slice(facts.length - maxEntries);
+    }
+
     fs.writeFileSync(
       path.join(this.agentDir(agentId), 'facts.json'),
       JSON.stringify(facts, null, 2),

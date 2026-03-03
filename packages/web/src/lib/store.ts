@@ -40,6 +40,11 @@ interface AppStore {
   // Discussions
   discussionStates: Map<string, DiscussionState>;
   setDiscussionState: (roomId: string, state: DiscussionState) => void;
+
+  // UI
+  sidebarOpen: boolean;
+  setSidebarOpen: (open: boolean) => void;
+  toggleSidebar: () => void;
 }
 
 export const useStore = create<AppStore>((set) => ({
@@ -109,4 +114,9 @@ export const useStore = create<AppStore>((set) => ({
     next.set(roomId, ds);
     return { discussionStates: next };
   }),
+
+  // UI
+  sidebarOpen: false,
+  setSidebarOpen: (open) => set({ sidebarOpen: open }),
+  toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
 }));
