@@ -21,7 +21,7 @@ export interface DaemonConfig {
   port: number;
   agentsDir: string;
   dataDir: string;
-  corsOrigins: string[];
+  corsOrigins: (string | RegExp)[];
 }
 
 export function createServer(config: DaemonConfig): { app: express.Express; shutdown: () => void } {

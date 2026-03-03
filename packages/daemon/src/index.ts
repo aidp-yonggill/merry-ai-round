@@ -2,7 +2,8 @@ import path from 'node:path';
 import { createServer } from './server.js';
 
 const PORT = parseInt(process.env.MERRY_PORT ?? '3141', 10);
-const ROOT_DIR = process.env.MERRY_ROOT ?? process.cwd();
+// When run from packages/daemon, resolve up to monorepo root
+const ROOT_DIR = process.env.MERRY_ROOT ?? path.resolve(import.meta.dirname, '../../..');
 
 const config = {
   port: PORT,
@@ -13,7 +14,7 @@ const config = {
     'http://localhost:3141',
     // Vercel preview/production URLs
     /^https:\/\/.*\.vercel\.app$/,
-  ].filter((o): o is string => typeof o === 'string'),
+  ],
 };
 
 const { app, shutdown } = createServer(config);

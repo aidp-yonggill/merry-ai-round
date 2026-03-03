@@ -4,13 +4,16 @@ import { useEffect, useRef } from 'react';
 import { useStore } from '@/lib/store';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MessageBubble } from './MessageBubble';
+import type { ChatMessage } from '@merry/shared';
+
+const EMPTY_MESSAGES: ChatMessage[] = [];
 
 interface MessageListProps {
   roomId: string;
 }
 
 export function MessageList({ roomId }: MessageListProps) {
-  const messages = useStore((s) => s.messages.get(roomId) ?? []);
+  const messages = useStore((s) => s.messages.get(roomId) ?? EMPTY_MESSAGES);
   const streamingMessages = useStore((s) => s.streamingMessages);
   const agents = useStore((s) => s.agents);
   const bottomRef = useRef<HTMLDivElement>(null);

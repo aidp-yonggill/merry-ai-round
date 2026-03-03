@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 export function Sidebar() {
   const rooms = useStore((s) => s.rooms);
   const setRooms = useStore((s) => s.setRooms);
+  const setAgents = useStore((s) => s.setAgents);
   const connected = useStore((s) => s.connected);
   const api = useApiClient();
   const pathname = usePathname();
@@ -18,7 +19,8 @@ export function Sidebar() {
   useEffect(() => {
     if (!connected) return;
     api.listRooms().then(setRooms).catch(() => {});
-  }, [connected, api, setRooms]);
+    api.listAgents().then(setAgents).catch(() => {});
+  }, [connected, api, setRooms, setAgents]);
 
   return (
     <aside className="flex h-full w-60 shrink-0 flex-col border-r border-border bg-card">

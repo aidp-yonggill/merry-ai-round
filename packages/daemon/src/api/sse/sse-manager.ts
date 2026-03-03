@@ -35,7 +35,7 @@ export class SSEManager {
   }
 
   broadcast(event: SSEEvent): void {
-    const data = `event: ${event.type}\ndata: ${JSON.stringify(event.data)}\n\n`;
+    const data = `data: ${JSON.stringify(event)}\n\n`;
 
     for (const client of this.clients.values()) {
       try {
@@ -47,7 +47,7 @@ export class SSEManager {
   }
 
   broadcastToRoom(roomId: string, event: SSEEvent): void {
-    const data = `event: ${event.type}\ndata: ${JSON.stringify(event.data)}\n\n`;
+    const data = `data: ${JSON.stringify(event)}\n\n`;
 
     for (const client of this.clients.values()) {
       if (!client.roomId || client.roomId === roomId) {
@@ -65,7 +65,7 @@ export class SSEManager {
     if (!client) return;
 
     try {
-      const data = `event: ${event.type}\ndata: ${JSON.stringify(event.data)}\n\n`;
+      const data = `data: ${JSON.stringify(event)}\n\n`;
       client.res.write(data);
     } catch {
       this.clients.delete(clientId);
