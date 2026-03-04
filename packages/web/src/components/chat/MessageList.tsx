@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useStore } from '@/lib/store';
 import { useApiClient } from '@/hooks/useApiClient';
@@ -19,8 +19,10 @@ export function MessageList({ roomId }: MessageListProps) {
   const t = useTranslations('chat');
   const messages = useStore((s) => s.messages.get(roomId) ?? EMPTY_MESSAGES);
   const setMessages = useStore((s) => s.setMessages);
-  const streamingMessages = useStore((s) => s.streamingMessages);
-  const activeToolBlocks = useStore((s) => s.activeToolBlocks);
+  // Subscribe to size changes to trigger re-renders (actual data read via getState())
+  const streamingSize = useStore((s) => s.streamingMessages.size);
+  const toolBlocksSize = useStore((s) => s.activeToolBlocks.size);
+  void toolBlocksSize; // reactive subscription only
   const agents = useStore((s) => s.agents);
   const api = useApiClient();
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -30,16 +32,20 @@ export function MessageList({ roomId }: MessageListProps) {
   const [hasMore, setHasMore] = useState(true);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const cursorRef = useRef<string | undefined>(undefined);
+  const loadingRef = useRef(false);
+  const hasMoreRef = useRef(true);
 
-  const agentMap = new Map(agents.map((a) => [a.id, a]));
+  const agentMap = useMemo(() => new Map(agents.map((a) => [a.id, a])), [agents]);
 
   const loadOlderMessages = useCallback(async () => {
-    if (loadingOlder || !hasMore) return;
+    if (loadingRef.current || !hasMoreRef.current) return;
+    loadingRef.current = true;
     setLoadingOlder(true);
     try {
       const res = await api.listMessages(roomId, PAGE_SIZE, cursorRef.current);
       if (res.items.length > 0) {
         cursorRef.current = res.nextCursor;
+        hasMoreRef.current = res.hasMore;
         setHasMore(res.hasMore);
         // Prepend older messages
         const current = useStore.getState().messages.get(roomId) ?? [];
@@ -49,17 +55,21 @@ export function MessageList({ roomId }: MessageListProps) {
           setMessages(roomId, [...newItems, ...current]);
         }
       } else {
+        hasMoreRef.current = false;
         setHasMore(false);
       }
     } catch {
       // silently fail, user can scroll up again
     } finally {
+      loadingRef.current = false;
       setLoadingOlder(false);
     }
-  }, [loadingOlder, hasMore, api, roomId, setMessages]);
+  }, [api, roomId, setMessages]);
 
   // Reset pagination state when room changes
   useEffect(() => {
+    hasMoreRef.current = true;
+    loadingRef.current = false;
     setHasMore(true);
     cursorRef.current = undefined;
   }, [roomId]);
@@ -85,7 +95,7 @@ export function MessageList({ roomId }: MessageListProps) {
   useEffect(() => {
     const isMobile = window.matchMedia('(max-width: 767px)').matches;
     bottomRef.current?.scrollIntoView({ behavior: isMobile ? 'auto' : 'smooth' });
-  }, [messages.length, streamingMessages.size]);
+  }, [messages.length, streamingSize]);
 
   return (
     <ScrollArea className="flex-1 min-h-0 [&>div]:touch-pan-y [&>div]:overscroll-contain">
@@ -111,8 +121,8 @@ export function MessageList({ roomId }: MessageListProps) {
             key={msg.id}
             message={msg}
             agent={msg.agentId ? agentMap.get(msg.agentId) : undefined}
-            streamingContent={streamingMessages.get(msg.id)}
-            activeToolBlocks={activeToolBlocks.get(msg.id)}
+            streamingContent={useStore.getState().streamingMessages.get(msg.id)}
+            activeToolBlocks={useStore.getState().activeToolBlocks.get(msg.id)}
           />
         ))}
         <div ref={bottomRef} />

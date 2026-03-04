@@ -9,13 +9,15 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { AgentInstanceInfo } from '@merry/shared';
 
+const EMPTY_INSTANCES: AgentInstanceInfo[] = [];
+
 interface ChannelAgentControlsProps {
   roomId: string;
 }
 
 export function ChannelAgentControls({ roomId }: ChannelAgentControlsProps) {
   const t = useTranslations('agents');
-  const instances = useStore((s) => s.agentInstances.get(roomId) ?? []);
+  const instances = useStore((s) => s.agentInstances.get(roomId) ?? EMPTY_INSTANCES);
   const agents = useStore((s) => s.agents);
   const rooms = useStore((s) => s.rooms);
   const api = useApiClient();
