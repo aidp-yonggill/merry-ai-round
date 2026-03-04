@@ -99,12 +99,17 @@ export class MessageDispatcher extends EventEmitter {
       }
     }
 
+    if (respondingAgents.length > 0) {
+      const names = respondingAgents.map(id => this.agentManager.get(id)?.definition.name ?? id);
+      console.log(`[Dispatch] 📨 "${message.content.slice(0, 60)}${message.content.length > 60 ? '...' : ''}" → ${names.join(', ')}`);
+    }
+
     // Send to responding agents (sequentially to avoid overlapping streams)
     for (const agentId of respondingAgents) {
       try {
         await this.sendToAgent(agentId, roomId, message);
       } catch (err) {
-        console.error(`[MessageDispatcher] Error sending to agent ${agentId}:`, err);
+        console.error(`[Dispatch] ❌ Agent ${agentId} error:`, err);
       }
     }
   }
@@ -161,9 +166,12 @@ export class MessageDispatcher extends EventEmitter {
 
     // Create streaming placeholder
     const messageId = this.messageRouter.createStreamingPlaceholder(roomId, agentId);
+    const agentName = agent.definition.name;
+    console.log(`[Dispatch] 🤔 ${agentName} thinking...`);
 
     try {
       const result = await this.processManager.sendToAgent(agentId, roomId, prompt, messageId);
+      console.log(`[Dispatch] ✅ ${agentName} responded (${result.tokensIn ?? 0}+${result.tokensOut ?? 0} tokens, $${(result.costUsd ?? 0).toFixed(4)})`);
 
       // Save agent response as a message
       const agentMessage = this.messageRouter.createMessage({

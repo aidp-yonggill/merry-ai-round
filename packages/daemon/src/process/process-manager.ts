@@ -259,12 +259,14 @@ export class ProcessManager extends EventEmitter {
     }
 
     instance.lastActiveAt = new Date().toISOString();
+    console.log(`[Process] 📤 Sending to ${agentId} (pid:${instance.process.pid})`);
 
     const result = await instance.process.sendMessage(content, {
       agentId,
       roomId,
       messageId,
     });
+    console.log(`[Process] 📥 ${agentId} done (${result.durationMs}ms)`);
 
     // Update tracking
     instance.tokensUsed += (result.tokensIn ?? 0) + (result.tokensOut ?? 0);
