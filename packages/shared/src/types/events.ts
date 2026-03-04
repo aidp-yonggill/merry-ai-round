@@ -7,6 +7,9 @@ export type SSEEventType =
   | 'message:stream'
   | 'agent:status'
   | 'discussion:state'
+  | 'tool:start'
+  | 'tool:progress'
+  | 'tool:complete'
   | 'heartbeat';
 
 export interface MessageNewEvent {
@@ -39,6 +42,43 @@ export interface DiscussionStateEvent {
   data: DiscussionState;
 }
 
+export interface ToolStartEvent {
+  type: 'tool:start';
+  data: {
+    messageId: string;
+    roomId: string;
+    agentId: string;
+    toolUseId: string;
+    toolName: string;
+    input: Record<string, unknown>;
+  };
+}
+
+export interface ToolProgressEvent {
+  type: 'tool:progress';
+  data: {
+    messageId: string;
+    roomId: string;
+    agentId: string;
+    toolUseId: string;
+    toolName: string;
+    content: string;
+  };
+}
+
+export interface ToolCompleteEvent {
+  type: 'tool:complete';
+  data: {
+    messageId: string;
+    roomId: string;
+    agentId: string;
+    toolUseId: string;
+    toolName: string;
+    output?: string;
+    isError: boolean;
+  };
+}
+
 export interface HeartbeatEvent {
   type: 'heartbeat';
   data: { timestamp: string };
@@ -49,4 +89,7 @@ export type SSEEvent =
   | MessageStreamEvent
   | AgentStatusEvent
   | DiscussionStateEvent
+  | ToolStartEvent
+  | ToolProgressEvent
+  | ToolCompleteEvent
   | HeartbeatEvent;

@@ -12,6 +12,8 @@ export function useSSE() {
   const clearStream = useStore((s) => s.clearStream);
   const updateAgentStatus = useStore((s) => s.updateAgentStatus);
   const setDiscussionState = useStore((s) => s.setDiscussionState);
+  const addToolBlock = useStore((s) => s.addToolBlock);
+  const updateToolBlock = useStore((s) => s.updateToolBlock);
 
   const esRef = useRef<EventSource | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -50,6 +52,23 @@ export function useSSE() {
           case 'discussion:state':
             setDiscussionState(event.data.roomId, event.data);
             break;
+          case 'tool:start':
+            addToolBlock(event.data.messageId, {
+              id: event.data.toolUseId,
+              toolName: event.data.toolName,
+              input: event.data.input,
+              status: 'running',
+            });
+            break;
+          case 'tool:complete':
+            updateToolBlock(event.data.messageId, event.data.toolUseId, {
+              status: event.data.isError ? 'error' : 'completed',
+              output: event.data.output,
+            });
+            break;
+          case 'tool:progress':
+            // Progress updates (optional content streaming for tool output)
+            break;
           case 'heartbeat':
             // Keep-alive, nothing to do
             break;
@@ -70,7 +89,7 @@ export function useSSE() {
         connect();
       }, reconnectDelay.current);
     };
-  }, [daemonUrl, setConnected, addMessage, appendStreamChunk, clearStream, updateAgentStatus, setDiscussionState]);
+  }, [daemonUrl, setConnected, addMessage, appendStreamChunk, clearStream, updateAgentStatus, setDiscussionState, addToolBlock, updateToolBlock]);
 
   useEffect(() => {
     connect();

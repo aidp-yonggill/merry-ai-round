@@ -15,6 +15,7 @@ interface MessageListProps {
 export function MessageList({ roomId }: MessageListProps) {
   const messages = useStore((s) => s.messages.get(roomId) ?? EMPTY_MESSAGES);
   const streamingMessages = useStore((s) => s.streamingMessages);
+  const activeToolBlocks = useStore((s) => s.activeToolBlocks);
   const agents = useStore((s) => s.agents);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -42,6 +43,7 @@ export function MessageList({ roomId }: MessageListProps) {
             message={msg}
             agent={msg.agentId ? agentMap.get(msg.agentId) : undefined}
             streamingContent={streamingMessages.get(msg.id)}
+            activeToolBlocks={activeToolBlocks.get(msg.id)}
           />
         ))}
         <div ref={bottomRef} />

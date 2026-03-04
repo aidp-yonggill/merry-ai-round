@@ -4,6 +4,7 @@ import type {
   Room,
   ChatMessage,
   DiscussionState,
+  ToolUseBlock,
 } from '@merry/shared';
 
 const DEFAULT_DAEMON_URL = 'http://localhost:3141';
@@ -36,6 +37,12 @@ interface AppStore {
   streamingMessages: Map<string, string>;
   appendStreamChunk: (messageId: string, chunk: string) => void;
   clearStream: (messageId: string) => void;
+
+  // Tool Use (real-time tracking by messageId)
+  activeToolBlocks: Map<string, ToolUseBlock[]>;
+  addToolBlock: (messageId: string, block: ToolUseBlock) => void;
+  updateToolBlock: (messageId: string, toolUseId: string, update: Partial<ToolUseBlock>) => void;
+  clearToolBlocks: (messageId: string) => void;
 
   // Discussions
   discussionStates: Map<string, DiscussionState>;
@@ -105,6 +112,30 @@ export const useStore = create<AppStore>((set) => ({
     const next = new Map(state.streamingMessages);
     next.delete(messageId);
     return { streamingMessages: next };
+  }),
+
+  // Tool Use
+  activeToolBlocks: new Map(),
+  addToolBlock: (messageId, block) => set((state) => {
+    const next = new Map(state.activeToolBlocks);
+    const existing = next.get(messageId) ?? [];
+    next.set(messageId, [...existing, block]);
+    return { activeToolBlocks: next };
+  }),
+  updateToolBlock: (messageId, toolUseId, update) => set((state) => {
+    const next = new Map(state.activeToolBlocks);
+    const blocks = next.get(messageId);
+    if (blocks) {
+      next.set(messageId, blocks.map(b =>
+        b.id === toolUseId ? { ...b, ...update } : b
+      ));
+    }
+    return { activeToolBlocks: next };
+  }),
+  clearToolBlocks: (messageId) => set((state) => {
+    const next = new Map(state.activeToolBlocks);
+    next.delete(messageId);
+    return { activeToolBlocks: next };
   }),
 
   // Discussions

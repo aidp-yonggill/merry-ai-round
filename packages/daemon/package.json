@@ -11,18 +11,18 @@
     "clean": "rm -rf dist .turbo *.tsbuildinfo"
   },
   "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.63",
     "@merry/shared": "workspace:*",
-    "@anthropic-ai/sdk": "^0.52.0",
-    "express": "^5.1.0",
-    "cors": "^2.8.5",
-    "gray-matter": "^4.0.3",
     "better-sqlite3": "^11.8.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "gray-matter": "^4.0.3",
     "nanoid": "^5.1.0"
   },
   "devDependencies": {
-    "@types/express": "^5.0.0",
-    "@types/cors": "^2.8.17",
     "@types/better-sqlite3": "^7.6.12",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"
   }

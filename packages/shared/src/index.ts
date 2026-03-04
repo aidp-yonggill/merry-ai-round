@@ -18,6 +18,8 @@ export type {
 export type {
   MessageRole,
   MessageMetadata,
+  ToolUseBlock,
+  ToolUseStatus,
   ChatMessage,
   SendMessageRequest,
 } from './types/message.js';
@@ -36,6 +38,9 @@ export type {
   MessageStreamEvent,
   AgentStatusEvent,
   DiscussionStateEvent,
+  ToolStartEvent,
+  ToolProgressEvent,
+  ToolCompleteEvent,
   HeartbeatEvent,
 } from './types/events.js';
 

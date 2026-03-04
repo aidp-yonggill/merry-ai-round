@@ -1,4 +1,3 @@
-import Anthropic from '@anthropic-ai/sdk';
 import type { AgentDefinition, AgentState } from '@merry/shared';
 import { AgentInstance } from '../agent/agent-instance.js';
 import { AgentConfigLoader } from '../agent/agent-config-loader.js';
@@ -8,13 +7,11 @@ import type { SqliteStore } from '../storage/sqlite-store.js';
 export class AgentManager {
   private instances: Map<string, AgentInstance> = new Map();
   private configLoader: AgentConfigLoader;
-  private client: Anthropic;
   private memoryStore: MemoryStore | null = null;
   private sqliteStore: SqliteStore | null = null;
 
   constructor(agentsDir: string) {
     this.configLoader = new AgentConfigLoader(agentsDir);
-    this.client = new Anthropic();
   }
 
   setMemoryStore(store: MemoryStore): void {
@@ -29,7 +26,7 @@ export class AgentManager {
     const definitions = this.configLoader.loadAll();
     for (const def of definitions) {
       if (!this.instances.has(def.id)) {
-        const instance = new AgentInstance(def, this.client, this.memoryStore ?? undefined);
+        const instance = new AgentInstance(def, this.memoryStore ?? undefined);
 
         // Restore cumulative stats from SQLite
         if (this.sqliteStore) {
@@ -75,7 +72,7 @@ export class AgentManager {
     if (existing) {
       existing.stop();
     }
-    this.instances.set(agentId, new AgentInstance(def, this.client));
+    this.instances.set(agentId, new AgentInstance(def, this.memoryStore ?? undefined));
     return def;
   }
 

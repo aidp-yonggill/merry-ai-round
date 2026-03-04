@@ -90,17 +90,21 @@ export function messageRoutes(
     const recentMessages = messageRouter.getMessages(room.id, 20);
     const messageId = messageRouter.createStreamingPlaceholder(room.id, targetAgentId);
 
-    // Forward stream/status events to SSE
+    // Forward stream/status/tool events to SSE
     const onStream = (chunk: any) => sse.broadcast({ type: 'message:stream', data: chunk });
     const onStatus = (s: any) => sse.broadcast({ type: 'agent:status', data: s });
+    const onToolUse = (t: any) => sse.broadcast({ type: 'tool:start', data: t });
+    const onToolComplete = (t: any) => sse.broadcast({ type: 'tool:complete', data: t });
     agent.on('stream', onStream);
     agent.on('status', onStatus);
+    agent.on('tool_use', onToolUse);
+    agent.on('tool_complete', onToolComplete);
 
     // Send response immediately, agent will respond asynchronously
     res.json({ ok: true, data: userMessage } satisfies ApiResponse);
 
     try {
-      const content = await agent.executeTurn({
+      const result = await agent.executeTurn({
         roomId: room.id,
         messageId,
         prompt: body.content,
@@ -113,13 +117,21 @@ export function messageRoutes(
         roomId: room.id,
         role: 'agent',
         agentId: targetAgentId,
-        content,
+        content: result.content,
+        metadata: {
+          toolUseBlocks: result.toolUseBlocks.length > 0 ? result.toolUseBlocks : undefined,
+          sdkSessionId: result.sdkSessionId,
+          numTurns: result.numTurns,
+          durationMs: result.durationMs,
+        },
       });
     } catch (err) {
       console.error(`[Messages] Agent response error:`, err);
     } finally {
       agent.off('stream', onStream);
       agent.off('status', onStatus);
+      agent.off('tool_use', onToolUse);
+      agent.off('tool_complete', onToolComplete);
     }
   });
 

@@ -1,6 +1,6 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { query } from '@anthropic-ai/claude-agent-sdk';
 import { EventEmitter } from 'node:events';
-import type { AgentDefinition, AgentStatus } from '@merry/shared';
+import type { AgentDefinition, AgentStatus, ToolUseBlock, ChatMessage } from '@merry/shared';
 import { PromptBuilder } from './prompt-builder.js';
 import type { MemoryStore } from './memory-store.js';
 
@@ -18,12 +18,30 @@ export interface StreamChunk {
   done: boolean;
 }
 
+export interface TurnResult {
+  content: string;
+  toolUseBlocks: ToolUseBlock[];
+  sdkSessionId?: string;
+  numTurns?: number;
+  durationMs?: number;
+}
+
+export interface ExecuteTurnParams {
+  roomId: string;
+  messageId: string;
+  prompt: string;
+  recentMessages: ChatMessage[];
+  agentNames: Map<string, string>;
+  roomContext: { name: string; members: string[] };
+}
+
 export class AgentInstance extends EventEmitter {
+  readonly id: string;
   readonly definition: AgentDefinition;
-  private client: Anthropic;
+
   private promptBuilder: PromptBuilder;
-  private memoryStore: MemoryStore | null;
-  private conversationHistory: Map<string, Anthropic.MessageParam[]> = new Map();
+  private memoryStore?: MemoryStore;
+  private sessionIds: Map<string, string> = new Map(); // roomId -> sessionId
 
   status: AgentStatus = 'idle';
   currentRoomId: string | null = null;
@@ -31,167 +49,207 @@ export class AgentInstance extends EventEmitter {
   totalCostUsd = 0;
   lastActiveAt: string | null = null;
 
-  constructor(definition: AgentDefinition, client: Anthropic, memoryStore?: MemoryStore) {
+  constructor(definition: AgentDefinition, memoryStore?: MemoryStore) {
     super();
+    this.id = definition.id;
     this.definition = definition;
-    this.client = client;
-    this.memoryStore = memoryStore ?? null;
     this.promptBuilder = new PromptBuilder();
+    this.memoryStore = memoryStore;
   }
 
-  get id(): string {
-    return this.definition.id;
-  }
-
-  async executeTurn(params: {
-    roomId: string;
-    messageId: string;
-    prompt: string;
-    recentMessages: import('@merry/shared').ChatMessage[];
-    agentNames: Map<string, string>;
-    roomContext?: { name: string; members: string[] };
-  }): Promise<string> {
+  async executeTurn(params: ExecuteTurnParams): Promise<TurnResult> {
     const { roomId, messageId, prompt, recentMessages, agentNames, roomContext } = params;
+    const startTime = Date.now();
 
-    // Enforce budget limit
-    const maxBudget = this.definition.maxBudgetUsd;
-    if (maxBudget && this.totalCostUsd >= maxBudget) {
-      this.status = 'error';
-      this.emit('status', { agentId: this.id, status: 'budget_exceeded', roomId });
-      throw new Error(`Agent ${this.id} exceeded budget: $${this.totalCostUsd.toFixed(4)} >= $${maxBudget}`);
-    }
-
-    this.status = 'thinking';
     this.currentRoomId = roomId;
-    this.emit('status', { agentId: this.id, status: this.status, roomId });
+    this.lastActiveAt = new Date().toISOString();
+    this.setStatus('thinking', roomId);
 
-    const memoryContext = this.memoryStore?.getMemoryContext(this.id) || undefined;
-    const systemPrompt = this.promptBuilder.buildSystemPrompt(this.definition, roomContext, memoryContext);
-    const model = MODEL_MAP[this.definition.model] ?? MODEL_MAP.sonnet;
+    // Build system prompt with persona, memory, room context
+    const memoryContext = this.memoryStore?.getMemoryContext(this.id) ?? '';
+    const systemPrompt = this.promptBuilder.buildSystemPrompt(
+      this.definition,
+      roomContext,
+      memoryContext || undefined,
+    );
 
-    // Get or initialize conversation history for this room
-    if (!this.conversationHistory.has(roomId)) {
-      this.conversationHistory.set(roomId, []);
-    }
-    const history = this.conversationHistory.get(roomId)!;
+    // Build the turn prompt with conversation history
+    const turnPrompt = this.promptBuilder.buildTurnPrompt(
+      recentMessages,
+      agentNames,
+      prompt,
+    );
 
-    // Build the user message from turn prompt
-    const turnPrompt = this.promptBuilder.buildTurnPrompt(recentMessages, agentNames, prompt);
+    // Prepare SDK options
+    const allowedTools = this.definition.tools.allowed.length > 0
+      ? this.definition.tools.allowed
+      : undefined;
+    const disallowedTools = this.definition.tools.disallowed.length > 0
+      ? this.definition.tools.disallowed
+      : undefined;
 
-    // Add to history
-    history.push({ role: 'user' as const, content: turnPrompt });
+    const sessionId = this.sessionIds.get(roomId);
 
-    // Token-aware history trimming: estimate tokens and trim if over budget
-    // Context budget: ~60% of model context for history (rest for system prompt + memory + response)
-    const maxHistoryTokens = model.includes('haiku') ? 60_000 : 80_000;
-    await this.trimHistoryByTokens(history, model, systemPrompt, maxHistoryTokens);
+    let content = '';
+    const toolUseBlocks: ToolUseBlock[] = [];
+    let newSessionId: string | undefined;
+    let numTurns = 0;
 
     try {
-      this.status = 'responding';
-      this.emit('status', { agentId: this.id, status: this.status, roomId });
+      this.setStatus('responding', roomId);
 
-      let result = '';
+      for await (const message of query({
+        prompt: turnPrompt,
+        options: {
+          systemPrompt,
+          model: MODEL_MAP[this.definition.model] ?? MODEL_MAP.sonnet,
+          cwd: process.cwd(),
+          allowedTools,
+          disallowedTools,
+          maxTurns: this.definition.maxTurns ?? 10,
+          maxBudgetUsd: this.definition.maxBudgetUsd ?? 1.0,
+          permissionMode: 'bypassPermissions',
+          allowDangerouslySkipPermissions: true,
+          ...(sessionId ? { resume: sessionId } : {}),
+        },
+      })) {
+        // Capture session ID for future resumption
+        if (message.type === 'system' && message.subtype === 'init') {
+          newSessionId = (message as any).session_id;
+        }
 
-      const stream = this.client.messages.stream({
-        model,
-        max_tokens: 4096,
-        system: systemPrompt,
-        messages: history,
-      });
+        // Handle result message (final text output)
+        if ('result' in message) {
+          content = (message as any).result ?? '';
 
-      stream.on('text', (delta) => {
-        result += delta;
-        this.emit('stream', {
-          messageId,
-          roomId,
-          agentId: this.id,
-          chunk: delta,
-          done: false,
-        } satisfies StreamChunk);
-      });
+          // Emit final stream chunk
+          this.emit('stream', {
+            messageId,
+            roomId,
+            agentId: this.id,
+            chunk: content,
+            done: true,
+          } satisfies StreamChunk);
+        }
 
-      const finalMessage = await stream.finalMessage();
+        // Handle assistant messages with content
+        if (message.type === 'assistant') {
+          const msg = message as any;
 
-      // Emit done signal
-      this.emit('stream', {
-        messageId,
-        roomId,
-        agentId: this.id,
-        chunk: '',
-        done: true,
-      } satisfies StreamChunk);
+          // Stream text content
+          if (msg.content) {
+            const textContent = typeof msg.content === 'string'
+              ? msg.content
+              : Array.isArray(msg.content)
+                ? msg.content
+                    .filter((b: any) => b.type === 'text')
+                    .map((b: any) => b.text)
+                    .join('')
+                : '';
 
-      // Track usage
-      const usage = finalMessage.usage;
-      this.totalTokensUsed += usage.input_tokens + usage.output_tokens;
-      const inputCost = usage.input_tokens * (model.includes('opus') ? 0.000005 : model.includes('haiku') ? 0.000001 : 0.000003);
-      const outputCost = usage.output_tokens * (model.includes('opus') ? 0.000025 : model.includes('haiku') ? 0.000005 : 0.000015);
-      this.totalCostUsd += inputCost + outputCost;
+            if (textContent) {
+              this.emit('stream', {
+                messageId,
+                roomId,
+                agentId: this.id,
+                chunk: textContent,
+                done: false,
+              } satisfies StreamChunk);
+            }
 
-      this.emit('cost', {
-        agentId: this.id,
-        roomId,
-        tokensIn: usage.input_tokens,
-        tokensOut: usage.output_tokens,
-        costUsd: inputCost + outputCost,
-      });
+            // Extract tool use blocks
+            if (Array.isArray(msg.content)) {
+              for (const block of msg.content) {
+                if (block.type === 'tool_use') {
+                  const toolBlock: ToolUseBlock = {
+                    id: block.id,
+                    toolName: block.name,
+                    input: block.input ?? {},
+                    status: 'running',
+                  };
+                  toolUseBlocks.push(toolBlock);
 
-      // Add assistant response to history
-      history.push({ role: 'assistant' as const, content: result });
+                  this.emit('tool_use', {
+                    messageId,
+                    roomId,
+                    agentId: this.id,
+                    toolUseId: block.id,
+                    toolName: block.name,
+                    input: block.input ?? {},
+                  });
+                }
+              }
+            }
 
-      this.lastActiveAt = new Date().toISOString();
-      this.status = 'idle';
-      this.currentRoomId = null;
-      this.emit('status', { agentId: this.id, status: this.status });
+            numTurns++;
+          }
+        }
 
-      return result;
-    } catch (error) {
-      this.status = 'error';
-      this.emit('status', { agentId: this.id, status: this.status, roomId });
-      throw error;
+        // Handle tool results
+        if (message.type === 'result' || (message as any).type === 'tool_result') {
+          const msg = message as any;
+          const toolUseId = msg.tool_use_id;
+          if (toolUseId) {
+            const block = toolUseBlocks.find(b => b.id === toolUseId);
+            if (block) {
+              block.status = msg.is_error ? 'error' : 'completed';
+              block.output = typeof msg.content === 'string'
+                ? msg.content
+                : JSON.stringify(msg.content);
+            }
+
+            this.emit('tool_complete', {
+              messageId,
+              roomId,
+              agentId: this.id,
+              toolUseId,
+              toolName: block?.toolName ?? 'unknown',
+              output: block?.output,
+              isError: !!msg.is_error,
+            });
+          }
+        }
+      }
+
+      // Save session ID for room-based resumption
+      if (newSessionId) {
+        this.sessionIds.set(roomId, newSessionId);
+      }
+
+      const durationMs = Date.now() - startTime;
+      this.setStatus('idle', roomId);
+
+      return {
+        content,
+        toolUseBlocks,
+        sdkSessionId: newSessionId,
+        numTurns,
+        durationMs,
+      };
+    } catch (err: any) {
+      this.setStatus('error', roomId);
+
+      // Re-throw budget errors for caller handling
+      if (err?.message?.includes('budget')) {
+        throw err;
+      }
+
+      console.error(`[AgentInstance:${this.id}] Error during turn:`, err);
+      throw err;
     }
   }
 
-  private async trimHistoryByTokens(
-    history: Anthropic.MessageParam[],
-    model: string,
-    systemPrompt: string,
-    maxTokens: number,
-  ): Promise<void> {
-    if (history.length <= 2) return; // Always keep at least the last exchange
-
-    try {
-      const tokenCount = await this.client.messages.countTokens({
-        model,
-        system: systemPrompt,
-        messages: history,
-      });
-
-      let currentTokens = tokenCount.input_tokens;
-      while (currentTokens > maxTokens && history.length > 2) {
-        // Remove oldest pair (user + assistant) to maintain alternation
-        history.splice(0, 2);
-        const recount = await this.client.messages.countTokens({
-          model,
-          system: systemPrompt,
-          messages: history,
-        });
-        currentTokens = recount.input_tokens;
-      }
-    } catch {
-      // Fallback: simple message count limit if token counting fails
-      while (history.length > 30) {
-        history.shift();
-      }
-    }
-  }
-
-  clearHistory(roomId: string): void {
-    this.conversationHistory.delete(roomId);
+  private setStatus(status: AgentStatus, roomId?: string): void {
+    this.status = status;
+    this.emit('status', {
+      agentId: this.id,
+      status,
+      roomId,
+    });
   }
 
   stop(): void {
-    this.status = 'stopped';
-    this.emit('status', { agentId: this.id, status: this.status });
+    this.setStatus('stopped');
+    this.currentRoomId = null;
   }
 }

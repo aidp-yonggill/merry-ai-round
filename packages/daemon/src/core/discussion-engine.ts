@@ -178,7 +178,7 @@ export class DiscussionEngine extends EventEmitter {
         state.totalTurns = turnNumber;
         this.broadcastState(state);
 
-        // Forward stream events to SSE
+        // Forward stream/status/tool events to SSE
         const onStream = (chunk: any) => {
           this.sse.broadcast({ type: 'message:stream', data: chunk });
         };
@@ -189,13 +189,18 @@ export class DiscussionEngine extends EventEmitter {
         };
         agent.on('status', onStatus);
 
-        const onCost = (c: any) => {
-          this.store.recordCost(c.agentId, c.roomId, c.tokensIn, c.tokensOut, c.costUsd);
+        const onToolUse = (t: any) => {
+          this.sse.broadcast({ type: 'tool:start', data: t });
         };
-        agent.on('cost', onCost);
+        agent.on('tool_use', onToolUse);
+
+        const onToolComplete = (t: any) => {
+          this.sse.broadcast({ type: 'tool:complete', data: t });
+        };
+        agent.on('tool_complete', onToolComplete);
 
         try {
-          const content = await agent.executeTurn({
+          const result = await agent.executeTurn({
             roomId: room.id,
             messageId,
             prompt: 'Please share your thoughts on the discussion above.',
@@ -209,8 +214,14 @@ export class DiscussionEngine extends EventEmitter {
             roomId: room.id,
             role: 'agent',
             agentId: nextAgent,
-            content,
-            metadata: { turnNumber },
+            content: result.content,
+            metadata: {
+              turnNumber,
+              toolUseBlocks: result.toolUseBlocks.length > 0 ? result.toolUseBlocks : undefined,
+              sdkSessionId: result.sdkSessionId,
+              numTurns: result.numTurns,
+              durationMs: result.durationMs,
+            },
           });
 
           state.currentTurn.completedAt = new Date().toISOString();
@@ -219,9 +230,9 @@ export class DiscussionEngine extends EventEmitter {
           this.broadcastState(state);
 
           // Extract facts from response for agent memory
-          this.extractAndStoreFacts(nextAgent, content, room.id);
+          this.extractAndStoreFacts(nextAgent, result.content, room.id);
         } catch (err: any) {
-          if (err?.message?.includes('exceeded budget')) {
+          if (err?.message?.includes('budget')) {
             console.warn(`[DiscussionEngine] Agent ${nextAgent} budget exceeded, skipping`);
             this.messageRouter.createMessage({
               roomId: room.id,
@@ -237,7 +248,8 @@ export class DiscussionEngine extends EventEmitter {
         } finally {
           agent.off('stream', onStream);
           agent.off('status', onStatus);
-          agent.off('cost', onCost);
+          agent.off('tool_use', onToolUse);
+          agent.off('tool_complete', onToolComplete);
         }
 
         // Small delay between turns

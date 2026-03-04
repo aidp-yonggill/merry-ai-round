@@ -1,13 +1,15 @@
 'use client';
 
-import type { ChatMessage, AgentState } from '@merry/shared';
+import type { ChatMessage, AgentState, ToolUseBlock } from '@merry/shared';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { ToolUseBlockView } from './ToolUseBlockView';
 import { cn } from '@/lib/utils';
 
 interface MessageBubbleProps {
   message: ChatMessage;
   agent?: AgentState;
   streamingContent?: string;
+  activeToolBlocks?: ToolUseBlock[];
 }
 
 function formatTime(iso: string) {
@@ -28,7 +30,7 @@ function renderContent(text: string) {
   );
 }
 
-export function MessageBubble({ message, agent, streamingContent }: MessageBubbleProps) {
+export function MessageBubble({ message, agent, streamingContent, activeToolBlocks }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
   const displayContent = streamingContent ?? message.content;
@@ -80,6 +82,10 @@ export function MessageBubble({ message, agent, streamingContent }: MessageBubbl
             <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-foreground" />
           )}
         </div>
+        {/* Tool use blocks: show real-time active ones, or persisted from metadata */}
+        {!isUser && (activeToolBlocks ?? message.metadata.toolUseBlocks) && (
+          <ToolUseBlockView blocks={activeToolBlocks ?? message.metadata.toolUseBlocks ?? []} />
+        )}
         {message.metadata.tokensUsed && (
           <span className="mt-0.5 text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
             {message.metadata.tokensUsed} tokens
