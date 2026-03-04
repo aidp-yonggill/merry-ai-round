@@ -53,9 +53,10 @@ export function useSSE() {
       }, delay);
     };
 
-    const sseUrl = apiKey
-      ? `${daemonUrl}/api/events?apiKey=${encodeURIComponent(apiKey)}`
-      : `${daemonUrl}/api/events`;
+    const params = new URLSearchParams();
+    if (apiKey) params.set('apiKey', apiKey);
+    params.set('ngrok-skip-browser-warning', 'true');
+    const sseUrl = `${daemonUrl}/api/events?${params}`;
     const es = new EventSource(sseUrl);
     esRef.current = es;
 

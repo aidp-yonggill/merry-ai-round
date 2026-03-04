@@ -52,6 +52,7 @@ export class ApiClient {
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      'ngrok-skip-browser-warning': 'true',
       ...init?.headers as Record<string, string>,
     };
     if (this.apiKey) {
