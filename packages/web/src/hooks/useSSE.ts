@@ -20,29 +20,21 @@ export function useSSE() {
   const updateInstance = useStore((s) => s.updateInstance);
   const removeInstance = useStore((s) => s.removeInstance);
 
-  const esRef = useRef<EventSource | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const heartbeatTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const reconnectDelay = useRef(1000);
 
   const connect = useCallback(() => {
-    // Clear existing reconnect timer before setting new one
     clearTimeout(reconnectTimer.current);
 
-    if (esRef.current) {
-      esRef.current.close();
+    // Abort previous connection
+    if (abortRef.current) {
+      abortRef.current.abort();
     }
 
-    const resetHeartbeatTimer = () => {
-      clearTimeout(heartbeatTimer.current);
-      heartbeatTimer.current = setTimeout(() => {
-        setConnected(false);
-        esRef.current?.close();
-        esRef.current = null;
-        // Trigger reconnect
-        scheduleReconnect();
-      }, HEARTBEAT_TIMEOUT_MS);
-    };
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     const scheduleReconnect = () => {
       clearTimeout(reconnectTimer.current);
@@ -53,97 +45,133 @@ export function useSSE() {
       }, delay);
     };
 
-    const params = new URLSearchParams();
-    if (apiKey) params.set('apiKey', apiKey);
-    params.set('ngrok-skip-browser-warning', 'true');
-    const sseUrl = `${daemonUrl}/api/events?${params}`;
-    const es = new EventSource(sseUrl);
-    esRef.current = es;
-
-    es.onopen = () => {
-      setConnected(true);
-      reconnectDelay.current = 1000;
-      resetHeartbeatTimer();
+    const resetHeartbeatTimer = () => {
+      clearTimeout(heartbeatTimer.current);
+      heartbeatTimer.current = setTimeout(() => {
+        setConnected(false);
+        controller.abort();
+        scheduleReconnect();
+      }, HEARTBEAT_TIMEOUT_MS);
     };
 
-    es.onmessage = (ev) => {
-      try {
-        const event: SSEEvent = JSON.parse(ev.data);
+    const handleEvent = (event: SSEEvent) => {
+      resetHeartbeatTimer();
 
-        // Reset heartbeat timer on any message
-        resetHeartbeatTimer();
-
-        switch (event.type) {
-          case 'message:new':
-            addMessage(event.data);
-            break;
-          case 'message:stream':
-            if (event.data.done) {
-              clearStream(event.data.messageId);
-            } else {
-              appendStreamChunk(event.data.messageId, event.data.chunk);
+      switch (event.type) {
+        case 'message:new':
+          addMessage(event.data);
+          break;
+        case 'message:stream':
+          if (event.data.done) {
+            clearStream(event.data.messageId);
+          } else {
+            appendStreamChunk(event.data.messageId, event.data.chunk);
+          }
+          break;
+        case 'agent:status':
+          updateAgentStatus(event.data.agentId, event.data.status, event.data.roomId);
+          break;
+        case 'tool:start':
+          addToolBlock(event.data.messageId, {
+            id: event.data.toolUseId,
+            toolName: event.data.toolName,
+            input: event.data.input,
+            status: 'running',
+          });
+          break;
+        case 'tool:complete':
+          updateToolBlock(event.data.messageId, event.data.toolUseId, {
+            status: event.data.isError ? 'error' : 'completed',
+            output: event.data.output,
+          });
+          break;
+        case 'tool:progress':
+          break;
+        case 'instance:spawning':
+        case 'instance:running':
+          updateInstance(event.data);
+          break;
+        case 'instance:stopped':
+          removeInstance(event.data.instanceId, event.data.roomId);
+          break;
+        case 'instance:crashed':
+          removeInstance(event.data.instanceId, event.data.roomId);
+          break;
+        case 'instance:resource':
+          {
+            const instances = useStore.getState().agentInstances.get(event.data.roomId);
+            const inst = instances?.find(i => i.instanceId === event.data.instanceId);
+            if (inst) {
+              updateInstance({ ...inst, tokensUsed: event.data.tokensUsed, costUsd: event.data.costUsd });
             }
-            break;
-          case 'agent:status':
-            updateAgentStatus(event.data.agentId, event.data.status, event.data.roomId);
-            break;
-          case 'tool:start':
-            addToolBlock(event.data.messageId, {
-              id: event.data.toolUseId,
-              toolName: event.data.toolName,
-              input: event.data.input,
-              status: 'running',
-            });
-            break;
-          case 'tool:complete':
-            updateToolBlock(event.data.messageId, event.data.toolUseId, {
-              status: event.data.isError ? 'error' : 'completed',
-              output: event.data.output,
-            });
-            break;
-          case 'tool:progress':
-            // Progress updates (optional content streaming for tool output)
-            break;
-          case 'instance:spawning':
-          case 'instance:running':
-            updateInstance(event.data);
-            break;
-          case 'instance:stopped':
-            removeInstance(event.data.instanceId, event.data.roomId);
-            break;
-          case 'instance:crashed':
-            removeInstance(event.data.instanceId, event.data.roomId);
-            break;
-          case 'instance:resource':
-            {
-              const instances = useStore.getState().agentInstances.get(event.data.roomId);
-              const inst = instances?.find(i => i.instanceId === event.data.instanceId);
-              if (inst) {
-                updateInstance({ ...inst, tokensUsed: event.data.tokensUsed, costUsd: event.data.costUsd });
-              }
-            }
-            break;
-          case 'memory:compaction':
-            console.log('[memory:compaction]', event.data);
-            break;
-          case 'heartbeat':
-            // Timer already reset above
-            break;
-        }
-      } catch {
-        // Ignore parse errors
+          }
+          break;
+        case 'memory:compaction':
+          console.log('[memory:compaction]', event.data);
+          break;
+        case 'heartbeat':
+          break;
       }
     };
 
-    es.onerror = () => {
-      setConnected(false);
-      clearTimeout(heartbeatTimer.current);
-      es.close();
-      esRef.current = null;
-
-      // Exponential backoff reconnect: apply delay first, then multiply
-      scheduleReconnect();
+    // Use fetch-based SSE to support custom headers (ngrok, API key)
+    const headers: Record<string, string> = {
+      'Accept': 'text/event-stream',
+      'ngrok-skip-browser-warning': 'true',
     };
+    if (apiKey) {
+      headers['X-API-Key'] = apiKey;
+    }
+
+    fetch(`${daemonUrl}/api/events`, {
+      headers,
+      signal: controller.signal,
+    }).then(async (response) => {
+      if (!response.ok || !response.body) {
+        throw new Error(`SSE connection failed: ${response.status}`);
+      }
+
+      setConnected(true);
+      reconnectDelay.current = 1000;
+      resetHeartbeatTimer();
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // Parse SSE: split on double newline (event boundary)
+        const parts = buffer.split('\n\n');
+        buffer = parts.pop() ?? '';
+
+        for (const part of parts) {
+          for (const line of part.split('\n')) {
+            if (line.startsWith('data: ')) {
+              try {
+                const event: SSEEvent = JSON.parse(line.slice(6));
+                handleEvent(event);
+              } catch {
+                // ignore parse errors
+              }
+            }
+          }
+        }
+      }
+
+      // Stream ended normally
+      setConnected(false);
+      scheduleReconnect();
+    }).catch((err) => {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      setConnected(false);
+      scheduleReconnect();
+    });
   }, [daemonUrl, apiKey, setConnected, addMessage, appendStreamChunk, clearStream, updateAgentStatus, addToolBlock, updateToolBlock, setRoomInstances, updateInstance, removeInstance]);
 
   useEffect(() => {
@@ -151,8 +179,8 @@ export function useSSE() {
     return () => {
       clearTimeout(reconnectTimer.current);
       clearTimeout(heartbeatTimer.current);
-      esRef.current?.close();
-      esRef.current = null;
+      abortRef.current?.abort();
+      abortRef.current = null;
     };
   }, [connect]);
 }

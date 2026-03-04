@@ -17,9 +17,13 @@ export default function SettingsPage() {
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [testMessage, setTestMessage] = useState('');
 
+  const [saved, setSaved] = useState(false);
+
   const handleSave = useCallback(() => {
     setDaemonUrl(urlInput.replace(/\/+$/, ''));
     setApiKey(apiKeyInput);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
   }, [urlInput, setDaemonUrl, apiKeyInput, setApiKey]);
 
   const handleTest = useCallback(async () => {
@@ -88,9 +92,13 @@ export default function SettingsPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={handleSave}
-            className="inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+            className={`inline-flex h-9 items-center justify-center rounded-md px-4 text-sm font-medium transition-colors ${
+              saved
+                ? 'bg-emerald-600 text-white'
+                : 'bg-primary text-primary-foreground hover:bg-primary/90'
+            }`}
           >
-            {t('save')}
+            {saved ? '✓ Saved' : t('save')}
           </button>
           <button
             onClick={handleTest}
