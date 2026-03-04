@@ -1,6 +1,10 @@
 import path from 'node:path';
 import { createServer } from './server.js';
 
+// Allow Claude Agent SDK to spawn Claude Code subprocesses
+// (prevents "nested session" error when daemon runs inside a Claude Code session)
+delete process.env.CLAUDECODE;
+
 const PORT = parseInt(process.env.MERRY_PORT ?? '3141', 10);
 // When run from packages/daemon, resolve up to monorepo root
 const ROOT_DIR = process.env.MERRY_ROOT ?? path.resolve(import.meta.dirname, '../../..');

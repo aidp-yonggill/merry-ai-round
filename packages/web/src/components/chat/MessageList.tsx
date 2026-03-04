@@ -28,7 +28,7 @@ export function MessageList({ roomId }: MessageListProps) {
   }, [messages.length, streamingMessages.size]);
 
   return (
-    <ScrollArea className="flex-1 [&>div]:touch-pan-y [&>div]:overscroll-contain">
+    <ScrollArea className="flex-1 min-h-0 [&>div]:touch-pan-y [&>div]:overscroll-contain">
       <div className="flex flex-col py-2 md:py-4">
         {messages.length === 0 && (
           <div className="flex flex-1 items-center justify-center py-16">

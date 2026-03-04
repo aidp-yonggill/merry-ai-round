@@ -149,7 +149,14 @@ export class DiscussionEngine extends EventEmitter {
           assignedAgent: assigned,
         });
 
-        if (!nextAgent) break;
+        if (!nextAgent) {
+          // In directed mode, wait for user to assign a speaker instead of exiting
+          if (state.strategy === 'directed') {
+            await new Promise(r => setTimeout(r, 500));
+            continue;
+          }
+          break;
+        }
 
         const agent = this.agentManager.get(nextAgent);
         if (!agent) {
