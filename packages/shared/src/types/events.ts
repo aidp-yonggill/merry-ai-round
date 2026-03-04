@@ -15,6 +15,10 @@ export type SSEEventType =
   | 'tool:start'
   | 'tool:progress'
   | 'tool:complete'
+  | 'message:cancelled'
+  | 'room:deleted'
+  | 'room:archived'
+  | 'room:unarchived'
   | 'heartbeat';
 
 export interface MessageNewEvent {
@@ -125,6 +129,26 @@ export interface HeartbeatEvent {
   data: { timestamp: string };
 }
 
+export interface MessageCancelledEvent {
+  type: 'message:cancelled';
+  data: { roomId: string; agentId: string; messageId: string };
+}
+
+export interface RoomDeletedEvent {
+  type: 'room:deleted';
+  data: { roomId: string };
+}
+
+export interface RoomArchivedEvent {
+  type: 'room:archived';
+  data: { roomId: string };
+}
+
+export interface RoomUnarchivedEvent {
+  type: 'room:unarchived';
+  data: { roomId: string };
+}
+
 export type SSEEvent =
   | MessageNewEvent
   | MessageStreamEvent
@@ -138,4 +162,8 @@ export type SSEEvent =
   | ToolStartEvent
   | ToolProgressEvent
   | ToolCompleteEvent
+  | MessageCancelledEvent
+  | RoomDeletedEvent
+  | RoomArchivedEvent
+  | RoomUnarchivedEvent
   | HeartbeatEvent;

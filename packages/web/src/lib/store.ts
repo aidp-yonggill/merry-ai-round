@@ -30,6 +30,11 @@ interface AppStore {
   setRooms: (rooms: Room[]) => void;
   addRoom: (room: Room) => void;
   setActiveRoom: (roomId: string | null) => void;
+  removeRoom: (roomId: string) => void;
+  archivedRooms: Room[];
+  setArchivedRooms: (rooms: Room[]) => void;
+  moveRoomToArchive: (roomId: string) => void;
+  restoreRoomFromArchive: (roomId: string) => void;
 
   // Messages
   messages: Map<string, ChatMessage[]>;
@@ -156,6 +161,39 @@ export const useStore = create<AppStore>((set, get) => {
   setRooms: (rooms) => set({ rooms }),
   addRoom: (room) => set((state) => ({ rooms: [...state.rooms, room] })),
   setActiveRoom: (roomId) => set({ activeRoom: roomId }),
+  removeRoom: (roomId) => set((state) => {
+    const nextMessages = new Map(state.messages);
+    nextMessages.delete(roomId);
+    const nextInstances = new Map(state.agentInstances);
+    nextInstances.delete(roomId);
+    return {
+      rooms: state.rooms.filter(r => r.id !== roomId),
+      activeRoom: state.activeRoom === roomId ? null : state.activeRoom,
+      messages: nextMessages,
+      agentInstances: nextInstances,
+    };
+  }),
+  archivedRooms: [],
+  setArchivedRooms: (rooms) => set({ archivedRooms: rooms }),
+  moveRoomToArchive: (roomId) => set((state) => {
+    const room = state.rooms.find(r => r.id === roomId);
+    return {
+      rooms: state.rooms.filter(r => r.id !== roomId),
+      activeRoom: state.activeRoom === roomId ? null : state.activeRoom,
+      archivedRooms: room
+        ? [...state.archivedRooms, { ...room, status: 'archived' as const }]
+        : state.archivedRooms,
+    };
+  }),
+  restoreRoomFromArchive: (roomId) => set((state) => {
+    const room = state.archivedRooms.find(r => r.id === roomId);
+    return {
+      archivedRooms: state.archivedRooms.filter(r => r.id !== roomId),
+      rooms: room
+        ? [...state.rooms, { ...room, status: 'active' as const }]
+        : state.rooms,
+    };
+  }),
 
   // Messages
   messages: new Map(),

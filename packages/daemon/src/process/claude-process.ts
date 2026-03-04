@@ -101,6 +101,8 @@ export class ClaudeProcess extends EventEmitter {
         ...process.env,
         // Prevent nested Claude Code sessions
         CLAUDECODE: undefined,
+        // Disable user hooks in agent subprocess
+        DISABLE_HOOKS: '1',
       },
     });
 
@@ -155,13 +157,22 @@ export class ClaudeProcess extends EventEmitter {
 
     return new Promise((resolve, reject) => {
       let resultContent = '';
+      let streamedContent = '';  // Accumulate from assistant stream chunks
       let numTurns = 0;
       let tokensIn = 0;
       let tokensOut = 0;
       let costUsd = 0;
 
+      // Accumulate streamed text as fallback for empty result
+      const onStream = (chunk: ProcessStreamChunk) => {
+        if (chunk.messageId === meta.messageId && !chunk.done) {
+          streamedContent += chunk.chunk;
+        }
+      };
+      this.on('stream', onStream);
+
       const onResult = (data: any) => {
-        resultContent = data.result ?? resultContent;
+        resultContent = data.result || streamedContent || resultContent;
         numTurns = data.num_turns ?? numTurns;
         const usage = data.usage ?? data.total_usage ?? {};
         tokensIn = usage.input_tokens ?? usage.tokens_in ?? tokensIn;
@@ -206,6 +217,7 @@ export class ClaudeProcess extends EventEmitter {
       };
 
       const cleanup = () => {
+        this.off('stream', onStream);
         this.off('_result', onResult);
         this.off('error', onError);
         this.off('exit', onExit);
@@ -344,6 +356,8 @@ export class ClaudeProcess extends EventEmitter {
                 };
                 this.toolUseBlocks.push(toolBlock);
 
+                console.log(`[Agent:${this.currentAgentId}] 🔧 Tool: ${block.name}`);
+
                 if (this.currentMessageId) {
                   this.emit('tool_use', {
                     agentId: this.currentAgentId,
@@ -377,6 +391,10 @@ export class ClaudeProcess extends EventEmitter {
                       ? block.content.map((c: any) => c.text ?? '').join('')
                       : JSON.stringify(block.content);
                 }
+
+                const resultStatus = block.is_error ? '❌' : '✅';
+                const outputPreview = toolBlock?.output?.slice(0, 80) ?? '';
+                console.log(`[Agent:${this.currentAgentId}] ${resultStatus} ${toolBlock?.toolName ?? 'unknown'} → ${outputPreview}${(toolBlock?.output?.length ?? 0) > 80 ? '...' : ''}`);
 
                 if (this.currentMessageId) {
                   this.emit('tool_result', {

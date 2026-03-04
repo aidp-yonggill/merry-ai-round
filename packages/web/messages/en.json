@@ -71,6 +71,7 @@
     "responseTrigger": "Response Trigger",
     "triggerAlways": "Always",
     "triggerTagged": "Tagged",
+    "triggerContextual": "Contextual",
     "triggerCalled": "Called",
     "triggerManual": "Manual",
     "skipPermissions": "Skip Permissions",
@@ -94,7 +95,20 @@
   },
   "rooms": {
     "title": "Rooms",
-    "noRoomsYet": "No rooms yet"
+    "noRoomsYet": "No rooms yet",
+    "deleteRoom": "Delete Room",
+    "deleteConfirm": "Are you sure?",
+    "deleteConfirmDesc": "All messages and history will be permanently deleted.",
+    "confirmDelete": "Yes, Delete",
+    "deleting": "Deleting...",
+    "archive": "Archive",
+    "unarchive": "Restore",
+    "archiveConfirm": "Archive this room?",
+    "archiveConfirmDesc": "Agent memories will be saved to long-term memory. You can restore later.",
+    "archived": "Archived",
+    "archivedRooms": "Archived Rooms",
+    "archiving": "Archiving...",
+    "restoring": "Restoring..."
   },
   "createRoom": {
     "title": "Create Room",

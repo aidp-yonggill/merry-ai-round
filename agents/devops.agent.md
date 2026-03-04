@@ -11,7 +11,7 @@ tools:
 maxTurns: 10
 maxBudgetUsd: 0.50
 behavior:
-  responseTrigger: tagged
+  responseTrigger: contextual
   responseStyle: structured
   autoGreet: true
   watchPatterns: ["인프라", "배포", "도커", "deploy", "docker", "aws", "infra", "ci/cd"]

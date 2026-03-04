@@ -162,6 +162,7 @@ export class ProcessManager extends EventEmitter {
     try {
       proc.spawn();
       instance.status = 'running';
+      console.log(`[ProcessManager] 🟢 ${agent.id} started in #${roomContext.name} (pid:${proc.pid}, model:${agent.model})`);
       this.emitInstanceEvent('instance:running', instance);
 
       // Start health check timer if not running
@@ -186,6 +187,7 @@ export class ProcessManager extends EventEmitter {
     if (!instance) return;
 
     instance.status = 'stopping';
+    console.log(`[ProcessManager] 🔴 Stopping ${agentId} in room ${roomId} (pid:${instance.process.pid})`);
 
     // Compact short-term memory before stopping
     try {

@@ -55,6 +55,8 @@ export function messageRoutes(
       content: body.content,
     });
 
+    console.log(`[Messages] 💬 #${room.name} | User: "${body.content.slice(0, 80)}${body.content.length > 80 ? '...' : ''}"`);
+
     // Send response immediately — agent responses come via SSE
     res.json({ ok: true, data: userMessage } satisfies ApiResponse);
 
@@ -62,7 +64,7 @@ export function messageRoutes(
     try {
       await dispatcher.dispatch(room.id, userMessage);
     } catch (err) {
-      console.error(`[Messages] Dispatch error for room ${room.id}:`, err);
+      console.error(`[Messages] ❌ Dispatch error in #${room.name}:`, err);
     }
   });
 

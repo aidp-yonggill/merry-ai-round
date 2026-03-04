@@ -16,6 +16,7 @@ export function Header() {
         <button
           type="button"
           onClick={toggleSidebar}
+          data-testid="header-menu-toggle"
           className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors md:hidden"
         >
           <Menu className="h-5 w-5" />
@@ -26,6 +27,7 @@ export function Header() {
       <nav className="flex items-center gap-2">
         <Link
           href="/settings"
+          data-testid="header-settings-link"
           className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
         >
           <Settings className="h-4 w-4" />

@@ -105,7 +105,7 @@ export function createServer(config: DaemonConfig): { app: express.Express; shut
 
   // --- API Routes ---
   app.use('/api/agents', agentRoutes(agentManager, memoryManager, configLoader));
-  app.use('/api/rooms', roomRoutes(roomManager));
+  app.use('/api/rooms', roomRoutes(roomManager, processManager, sse));
   app.use('/api/instances', instanceRoutes(processManager, agentManager, roomManager));
 
   // Room-scoped routes

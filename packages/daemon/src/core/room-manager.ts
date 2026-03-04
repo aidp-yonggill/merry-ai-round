@@ -17,6 +17,7 @@ export class RoomManager {
       type: params.type,
       turnStrategy: params.turnStrategy ?? 'round-robin',
       members: params.members,
+      status: 'active',
       createdAt: now,
       updatedAt: now,
     };
@@ -30,6 +31,10 @@ export class RoomManager {
 
   getAll(): Room[] {
     return this.store.getAllRooms();
+  }
+
+  getArchived(): Room[] {
+    return this.store.getArchivedRooms();
   }
 
   update(id: string, updates: Partial<Pick<Room, 'name' | 'turnStrategy'>>): Room | null {
@@ -64,6 +69,20 @@ export class RoomManager {
     room.updatedAt = new Date().toISOString();
     this.store.saveRoom(room);
     return room;
+  }
+
+  archive(id: string): boolean {
+    const room = this.store.getRoom(id);
+    if (!room) return false;
+    this.store.archiveRoom(id);
+    return true;
+  }
+
+  unarchive(id: string): boolean {
+    const room = this.store.getRoom(id);
+    if (!room) return false;
+    this.store.unarchiveRoom(id);
+    return true;
   }
 
   delete(id: string): void {

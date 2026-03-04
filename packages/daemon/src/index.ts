@@ -20,7 +20,8 @@ const config = {
     // Vercel preview/production URLs
     /^https:\/\/.*\.vercel\.app$/,
     // ngrok tunnel URLs
-    /^https:\/\/.*\.ngrok-free\.app$/,
+    /^https:\/\/.*\.ngrok-free\.(app|dev)$/,
+    /^https:\/\/.*\.ngrok\.app$/,
   ],
 };
 

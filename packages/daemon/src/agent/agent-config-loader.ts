@@ -45,7 +45,7 @@ const DEFAULTS: Omit<AgentDefinition, 'id' | 'slug' | 'persona'> = {
   memory: { retentionDays: 30, maxEntries: 100 },
 };
 
-const VALID_TRIGGERS: ResponseTrigger[] = ['always', 'tagged', 'called_by_agent', 'manual'];
+const VALID_TRIGGERS: ResponseTrigger[] = ['always', 'tagged', 'contextual', 'called_by_agent', 'manual'];
 const VALID_STYLES: AgentBehaviorConfig['responseStyle'][] = ['structured', 'conversational', 'brief'];
 
 export class AgentConfigLoader {

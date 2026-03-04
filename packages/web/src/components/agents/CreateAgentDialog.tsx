@@ -28,6 +28,7 @@ const MODELS: { value: AgentModel; label: string }[] = [
 const TRIGGERS: { value: ResponseTrigger; label: string }[] = [
   { value: 'always', label: 'Always' },
   { value: 'tagged', label: 'Tagged' },
+  { value: 'contextual', label: 'Contextual' },
   { value: 'called_by_agent', label: 'Called by Agent' },
   { value: 'manual', label: 'Manual' },
 ];
@@ -197,6 +198,7 @@ export function CreateAgentDialog({ onCreated }: CreateAgentDialogProps) {
                   >
                     {tr.value === 'always' ? t('triggerAlways') :
                      tr.value === 'tagged' ? t('triggerTagged') :
+                     tr.value === 'contextual' ? t('triggerContextual') :
                      tr.value === 'called_by_agent' ? t('triggerCalled') :
                      t('triggerManual')}
                   </button>

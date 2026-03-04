@@ -71,6 +71,7 @@
     "responseTrigger": "응답 트리거",
     "triggerAlways": "항상",
     "triggerTagged": "태그됨",
+    "triggerContextual": "맥락 판단",
     "triggerCalled": "호출됨",
     "triggerManual": "수동",
     "skipPermissions": "권한 건너뛰기",
@@ -94,7 +95,20 @@
   },
   "rooms": {
     "title": "룸",
-    "noRoomsYet": "아직 룸이 없습니다"
+    "noRoomsYet": "아직 룸이 없습니다",
+    "deleteRoom": "룸 삭제",
+    "deleteConfirm": "정말 삭제하시겠습니까?",
+    "deleteConfirmDesc": "모든 메시지와 기록이 영구적으로 삭제됩니다.",
+    "confirmDelete": "네, 삭제합니다",
+    "deleting": "삭제 중...",
+    "archive": "아카이브",
+    "unarchive": "복원",
+    "archiveConfirm": "이 룸을 아카이브하시겠습니까?",
+    "archiveConfirmDesc": "에이전트 기억이 장기 기억으로 저장됩니다. 나중에 복원할 수 있습니다.",
+    "archived": "아카이브됨",
+    "archivedRooms": "아카이브된 룸",
+    "archiving": "아카이브 중...",
+    "restoring": "복원 중..."
   },
   "createRoom": {
     "title": "룸 만들기",

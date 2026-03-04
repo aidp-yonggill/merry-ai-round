@@ -46,7 +46,7 @@ export default function DashboardPage() {
         </div>
         <div className="flex gap-2">
           <Link href="/rooms/new">
-            <Button size="sm" variant="outline">
+            <Button size="sm" variant="outline" data-testid="btn-new-room">
               <Plus className="mr-1 h-3.5 w-3.5" />
               {t('newRoom')}
             </Button>

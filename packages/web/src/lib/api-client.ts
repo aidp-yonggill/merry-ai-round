@@ -160,6 +160,19 @@ export class ApiClient {
       method: 'DELETE',
     });
   }
+  deleteRoom(id: string) {
+    return this.request<void>(`/api/rooms/${id}`, { method: 'DELETE' });
+  }
+  archiveRoom(id: string) {
+    return this.request<void>(`/api/rooms/${id}/archive`, { method: 'POST' });
+  }
+  unarchiveRoom(id: string) {
+    return this.request<void>(`/api/rooms/${id}/unarchive`, { method: 'POST' });
+  }
+  listArchivedRooms() {
+    return this.request<Room[]>('/api/rooms?status=archived');
+  }
+
 
   // --- Messages ---
   listMessages(roomId: string, limit = 50, before?: string) {

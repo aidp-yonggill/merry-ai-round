@@ -6,7 +6,6 @@ import { Play, Square, Loader2, AlertCircle } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { useApiClient } from '@/hooks/useApiClient';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import type { AgentInstanceInfo } from '@merry/shared';
 
 const EMPTY_INSTANCES: AgentInstanceInfo[] = [];
@@ -102,6 +101,11 @@ export function ChannelAgentControls({ roomId }: ChannelAgentControlsProps) {
         </Button>
       )}
 
+      {/* Mobile running count summary */}
+      <span className="text-xs text-muted-foreground sm:hidden">
+        {instances.filter((i) => i.status === 'running').length}/{memberAgents.length}
+      </span>
+
       {/* Per-agent status badges with toggle */}
       {memberAgents.map((agent) => {
         const instance = getInstanceForAgent(agent.id);
@@ -112,9 +116,9 @@ export function ChannelAgentControls({ roomId }: ChannelAgentControlsProps) {
         return (
           <button
             key={agent.id}
-            onClick={() => isRunning ? handleStopAgent(agent.id) : handleStartAgent(agent.id)}
+            onClick={() => (isRunning ? handleStopAgent(agent.id) : handleStartAgent(agent.id))}
             disabled={loadingAgent !== null}
-            className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors hover:bg-accent disabled:opacity-50"
+            className="hidden items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors hover:bg-accent disabled:opacity-50 sm:inline-flex"
             style={{ borderColor: agent.definition.color + '40' }}
             title={isRunning ? `Stop ${agent.definition.name}` : `Start ${agent.definition.name}`}
           >
@@ -138,10 +142,10 @@ export function ChannelAgentControls({ roomId }: ChannelAgentControlsProps) {
         );
       })}
 
-      {/* Instance count */}
+      {/* Instance count — desktop only */}
       {instances.length > 0 && (
-        <span className="text-xs text-muted-foreground">
-          {instances.filter(i => i.status === 'running').length}/{memberAgents.length}
+        <span className="hidden text-xs text-muted-foreground sm:inline">
+          {instances.filter((i) => i.status === 'running').length}/{memberAgents.length}
         </span>
       )}
     </div>

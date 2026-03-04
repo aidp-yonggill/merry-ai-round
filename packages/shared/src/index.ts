@@ -15,6 +15,7 @@ export type {
 export type {
   RoomType,
   TurnStrategy,
+  RoomStatus,
   Room,
   CreateRoomRequest,
 } from './types/room.js';
@@ -62,6 +63,9 @@ export type {
   ToolStartEvent,
   ToolProgressEvent,
   ToolCompleteEvent,
+  RoomDeletedEvent,
+  RoomArchivedEvent,
+  RoomUnarchivedEvent,
   HeartbeatEvent,
 } from './types/events.js';
 

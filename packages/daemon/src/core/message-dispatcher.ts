@@ -49,10 +49,17 @@ export class MessageDispatcher extends EventEmitter {
   /**
    * Dispatch a message to all relevant agents in a room.
    * This is the main entry point — called when a user or agent sends a message.
+   * @param respondedAgents - tracks agents that already responded in this chain to prevent duplicates
    */
-  async dispatch(roomId: string, message: ChatMessage): Promise<void> {
+  async dispatch(roomId: string, message: ChatMessage, respondedAgents?: Set<string>): Promise<void> {
     const activeAgents = this.processManager.getRoomAgents(roomId);
-    if (activeAgents.length === 0) return;
+    if (activeAgents.length === 0) {
+      console.log(`[Dispatch] ⚠️  No active agents in room ${roomId} — skipping dispatch`);
+      return;
+    }
+
+    // Create or reuse the responded agents set for the entire chain
+    const responded = respondedAgents ?? new Set<string>();
 
     // Build agent lookup for mention parsing
     const agentLookup = this.buildAgentLookup();
@@ -85,69 +92,123 @@ export class MessageDispatcher extends EventEmitter {
       });
     }
 
-    // Determine which agents should respond
-    const respondingAgents: string[] = [];
-    for (const agentId of activeAgents) {
-      // Don't let an agent respond to itself
-      if (message.agentId === agentId) continue;
+    // Split agents into immediate responders and contextual candidates
+    const immediateResponders: string[] = [];
+    const contextualCandidates: { id: string; def: AgentDefinition }[] = [];
 
+    for (const agentId of activeAgents) {
+      if (agentId === message.agentId) continue;
+      // Skip agents that already responded in this chain
+      if (responded.has(agentId)) {
+        console.log(`[Dispatch] ⏭️  ${this.agentManager.get(agentId)?.definition.name ?? agentId} already responded in chain — skipping`);
+        continue;
+      }
       const agent = this.agentManager.get(agentId);
       if (!agent) continue;
 
-      if (this.shouldAgentRespond(agent.definition, message, mentionedAgentIds)) {
-        respondingAgents.push(agentId);
+      const trigger = agent.definition.behavior.responseTrigger;
+      if (trigger === 'always') {
+        immediateResponders.push(agentId);
+      } else if (trigger === 'tagged' && mentionedAgentIds.has(agentId)) {
+        immediateResponders.push(agentId);
+      } else if (trigger === 'contextual' && mentionedAgentIds.has(agentId)) {
+        immediateResponders.push(agentId);
+      } else if (trigger === 'contextual') {
+        contextualCandidates.push({ id: agentId, def: agent.definition });
+      } else if (trigger === 'called_by_agent' && message.role === 'agent' && mentionedAgentIds.has(agentId)) {
+        immediateResponders.push(agentId);
       }
     }
 
-    if (respondingAgents.length > 0) {
-      const names = respondingAgents.map(id => this.agentManager.get(id)?.definition.name ?? id);
+    // Log dispatch decisions
+    if (immediateResponders.length > 0) {
+      const names = immediateResponders.map(id => this.agentManager.get(id)?.definition.name ?? id);
       console.log(`[Dispatch] 📨 "${message.content.slice(0, 60)}${message.content.length > 60 ? '...' : ''}" → ${names.join(', ')}`);
     }
-
-    // Send to responding agents (sequentially to avoid overlapping streams)
-    for (const agentId of respondingAgents) {
-      try {
-        await this.sendToAgent(agentId, roomId, message);
-      } catch (err) {
-        console.error(`[Dispatch] ❌ Agent ${agentId} error:`, err);
-      }
+    if (contextualCandidates.length > 0) {
+      const cNames = contextualCandidates.map(c => c.def.name);
+      console.log(`[Dispatch] 🔍 Batch checking: ${cNames.join(', ')}`);
     }
+
+    // Run immediate sends and batch relevance check in parallel
+    const immediateWork = async () => {
+      for (const agentId of immediateResponders) {
+        try {
+          await this.sendToAgent(agentId, roomId, message, responded);
+        } catch (err) {
+          console.error(`[Dispatch] ❌ Agent ${agentId} error:`, err);
+        }
+      }
+    };
+
+    const contextualWork = async () => {
+      if (contextualCandidates.length === 0) return;
+      const contextualResponders = this.batchRelevanceCheck(contextualCandidates, message, roomId);
+      if (contextualResponders.length > 0) {
+        const names = contextualResponders.map(id => this.agentManager.get(id)?.definition.name ?? id);
+        console.log(`[Dispatch] 📨 (contextual) → ${names.join(', ')}`);
+      }
+      for (const agentId of contextualResponders) {
+        try {
+          await this.sendToAgent(agentId, roomId, message, responded);
+        } catch (err) {
+          console.error(`[Dispatch] ❌ Agent ${agentId} error:`, err);
+        }
+      }
+    };
+
+    await Promise.all([immediateWork(), contextualWork()]);
   }
 
   /**
-   * Determine if an agent should respond to a message based on its behavior rules.
+   * Fast keyword-based relevance check for contextual agents.
+   * Matches message content against agent tags, name, and common domain keywords.
    */
-  private shouldAgentRespond(
-    agent: AgentDefinition,
+  private batchRelevanceCheck(
+    candidates: { id: string; def: AgentDefinition }[],
     message: ChatMessage,
-    mentionedAgentIds: Set<string>,
-  ): boolean {
-    const trigger = agent.behavior.responseTrigger;
+    _roomId: string,
+  ): string[] {
+    if (candidates.length === 0) return [];
 
-    switch (trigger) {
-      case 'always':
-        return true;
+    const text = message.content.toLowerCase();
 
-      case 'tagged':
-        return mentionedAgentIds.has(agent.id);
+    const results: string[] = [];
+    for (const c of candidates) {
+      // Check if any tag appears in the message
+      const tagMatch = c.def.tags.some(tag =>
+        text.includes(tag.toLowerCase()),
+      );
 
-      case 'called_by_agent':
-        return message.role === 'agent' && mentionedAgentIds.has(agent.id);
+      // Check if agent name appears in the message
+      const nameMatch = text.includes(c.def.name.toLowerCase());
 
-      case 'manual':
-        return false;
-
-      default:
-        return false;
+      if (tagMatch || nameMatch) {
+        console.log(`[Dispatch] 🎯 ${c.def.name} matched by ${tagMatch ? 'tag' : 'name'}`);
+        results.push(c.id);
+      }
     }
+
+    if (results.length === 0) {
+      console.log(`[Dispatch] 🎯 No contextual matches for: "${message.content.slice(0, 60)}"`);
+    }
+
+    return results;
   }
 
   /**
    * Send a message to a specific agent and handle the response.
    */
-  private async sendToAgent(agentId: string, roomId: string, triggerMessage: ChatMessage): Promise<void> {
+  private async sendToAgent(agentId: string, roomId: string, triggerMessage: ChatMessage, respondedAgents: Set<string>): Promise<void> {
     const agent = this.agentManager.get(agentId);
     if (!agent) return;
+
+    // Double-check: another branch may have processed this agent while we were queued
+    if (respondedAgents.has(agentId)) {
+      console.log(`[Dispatch] ⏭️  ${agent.definition.name} already responded in chain — skipping`);
+      return;
+    }
+    respondedAgents.add(agentId);
 
     // Build context: recent messages
     const recentMessages = this.messageRouter.getMessages(roomId, CONTEXT_WINDOW_SIZE);
@@ -172,6 +233,14 @@ export class MessageDispatcher extends EventEmitter {
     try {
       const result = await this.processManager.sendToAgent(agentId, roomId, prompt, messageId);
       console.log(`[Dispatch] ✅ ${agentName} responded (${result.tokensIn ?? 0}+${result.tokensOut ?? 0} tokens, $${(result.costUsd ?? 0).toFixed(4)})`);
+
+      // Skip empty responses (e.g. budget exceeded agents) — but allow tool-only responses
+      if ((!result.content || result.content.trim().length === 0) && result.toolUseBlocks.length === 0) {
+        console.log(`[Dispatch] ⚠️  ${agentName} returned empty response — skipping message save`);
+        // Cancel the streaming placeholder so the UI doesn't show a stuck "thinking" state
+        this.sse.broadcast({ type: 'message:cancelled', data: { roomId, agentId, messageId } });
+        return;
+      }
 
       // Save agent response as a message
       const agentMessage = this.messageRouter.createMessage({
@@ -210,9 +279,11 @@ export class MessageDispatcher extends EventEmitter {
       });
 
       // Recursively dispatch the agent's response (may trigger other agents)
-      await this.dispatch(roomId, agentMessage);
+      await this.dispatch(roomId, agentMessage, respondedAgents);
     } catch (err) {
       console.error(`[MessageDispatcher] Agent ${agentId} failed in room ${roomId}:`, err);
+      // Clean up chainDepths to prevent leaked state on error
+      this.chainDepths.delete(roomId);
     }
   }
 

@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Hash, Users, Plus, MessageSquare } from 'lucide-react';
+import { Hash, Users, Plus, MessageSquare, ChevronDown, Archive as ArchiveIcon } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { useApiClient } from '@/hooks/useApiClient';
 import { cn } from '@/lib/utils';
@@ -12,8 +12,11 @@ import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const t = useTranslations('sidebar');
+  const tr = useTranslations('rooms');
   const rooms = useStore((s) => s.rooms);
+  const archivedRooms = useStore((s) => s.archivedRooms);
   const pathname = usePathname();
+  const [archiveOpen, setArchiveOpen] = useState(false);
 
   return (
     <>
@@ -61,6 +64,37 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             </Link>
           );
         })}
+        {archivedRooms.length > 0 && (
+          <div className="mt-2">
+            <button
+              onClick={() => setArchiveOpen((o) => !o)}
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors"
+            >
+              <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', archiveOpen && 'rotate-180')} />
+              <span>{tr('archivedRooms')}</span>
+              <span className="ml-auto">{archivedRooms.length}</span>
+            </button>
+            {archiveOpen && archivedRooms.map((room) => {
+              const isActive = pathname === `/rooms/${room.id}`;
+              return (
+                <Link
+                  key={room.id}
+                  href={`/rooms/${room.id}`}
+                  onClick={onNavigate}
+                  className={cn(
+                    'flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors',
+                    isActive
+                      ? 'bg-accent text-foreground'
+                      : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+                  )}
+                >
+                  <ArchiveIcon className="h-4 w-4 shrink-0 opacity-60" />
+                  <span className="truncate opacity-70">{room.name}</span>
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </nav>
       <div className="border-t border-border p-2">
         <Link
@@ -85,13 +119,15 @@ export function Sidebar() {
   const connected = useStore((s) => s.connected);
   const setRooms = useStore((s) => s.setRooms);
   const setAgents = useStore((s) => s.setAgents);
+  const setArchivedRooms = useStore((s) => s.setArchivedRooms);
   const api = useApiClient();
 
   useEffect(() => {
     if (!connected) return;
     api.listRooms().then(setRooms).catch(() => {});
     api.listAgents().then(setAgents).catch(() => {});
-  }, [connected, api, setRooms, setAgents]);
+    api.listArchivedRooms().then(setArchivedRooms).catch(() => {});
+  }, [connected, api, setRooms, setAgents, setArchivedRooms]);
 
   return (
     <aside className="hidden md:flex h-full w-60 shrink-0 flex-col border-r border-border bg-card">

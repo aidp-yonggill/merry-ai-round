@@ -19,6 +19,9 @@ export function useSSE() {
   const setRoomInstances = useStore((s) => s.setRoomInstances);
   const updateInstance = useStore((s) => s.updateInstance);
   const removeInstance = useStore((s) => s.removeInstance);
+  const removeRoom = useStore((s) => s.removeRoom);
+  const moveRoomToArchive = useStore((s) => s.moveRoomToArchive);
+  const restoreRoomFromArchive = useStore((s) => s.restoreRoomFromArchive);
 
   const abortRef = useRef<AbortController | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -106,6 +109,15 @@ export function useSSE() {
             }
           }
           break;
+        case 'room:deleted':
+          removeRoom(event.data.roomId);
+          break;
+        case 'room:archived':
+          moveRoomToArchive(event.data.roomId);
+          break;
+        case 'room:unarchived':
+          restoreRoomFromArchive(event.data.roomId);
+          break;
         case 'memory:compaction':
           console.log('[memory:compaction]', event.data);
           break;
@@ -172,7 +184,7 @@ export function useSSE() {
       setConnected(false);
       scheduleReconnect();
     });
-  }, [daemonUrl, apiKey, setConnected, addMessage, appendStreamChunk, clearStream, updateAgentStatus, addToolBlock, updateToolBlock, setRoomInstances, updateInstance, removeInstance]);
+  }, [daemonUrl, apiKey, setConnected, addMessage, appendStreamChunk, clearStream, updateAgentStatus, addToolBlock, updateToolBlock, setRoomInstances, updateInstance, removeInstance, removeRoom, moveRoomToArchive, restoreRoomFromArchive]);
 
   useEffect(() => {
     connect();

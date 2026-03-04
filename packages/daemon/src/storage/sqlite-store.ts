@@ -58,45 +58,64 @@ export class SqliteStore {
         created_at TEXT NOT NULL
       );
     `);
+
+    // Migration: add status column to rooms
+    const columns = this.db.pragma('table_info(rooms)') as { name: string }[];
+    if (!columns.some(c => c.name === 'status')) {
+      this.db.exec(`ALTER TABLE rooms ADD COLUMN status TEXT NOT NULL DEFAULT 'active'`);
+    }
   }
 
   // -- Rooms --
 
   saveRoom(room: Room): void {
     this.db.prepare(`
-      INSERT OR REPLACE INTO rooms (id, name, type, turn_strategy, members, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(room.id, room.name, room.type, room.turnStrategy, JSON.stringify(room.members), room.createdAt, room.updatedAt);
+      INSERT OR REPLACE INTO rooms (id, name, type, turn_strategy, members, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(room.id, room.name, room.type, room.turnStrategy, JSON.stringify(room.members), room.status ?? 'active', room.createdAt, room.updatedAt);
   }
 
-  getRoom(id: string): Room | null {
-    const row = this.db.prepare('SELECT * FROM rooms WHERE id = ?').get(id) as any;
-    if (!row) return null;
+  private rowToRoom(row: any): Room {
     return {
       id: row.id,
       name: row.name,
       type: row.type,
       turnStrategy: row.turn_strategy,
       members: JSON.parse(row.members),
+      status: row.status ?? 'active',
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
   }
 
+  getRoom(id: string): Room | null {
+    const row = this.db.prepare('SELECT * FROM rooms WHERE id = ?').get(id) as any;
+    if (!row) return null;
+    return this.rowToRoom(row);
+  }
+
   getAllRooms(): Room[] {
-    const rows = this.db.prepare('SELECT * FROM rooms ORDER BY updated_at DESC').all() as any[];
-    return rows.map(row => ({
-      id: row.id,
-      name: row.name,
-      type: row.type,
-      turnStrategy: row.turn_strategy,
-      members: JSON.parse(row.members),
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    }));
+    const rows = this.db.prepare("SELECT * FROM rooms WHERE status = 'active' ORDER BY updated_at DESC").all() as any[];
+    return rows.map(row => this.rowToRoom(row));
+  }
+
+  getArchivedRooms(): Room[] {
+    const rows = this.db.prepare("SELECT * FROM rooms WHERE status = 'archived' ORDER BY updated_at DESC").all() as any[];
+    return rows.map(row => this.rowToRoom(row));
+  }
+
+  archiveRoom(id: string): void {
+    this.db.prepare("UPDATE rooms SET status = 'archived', updated_at = ? WHERE id = ?")
+      .run(new Date().toISOString(), id);
+  }
+
+  unarchiveRoom(id: string): void {
+    this.db.prepare("UPDATE rooms SET status = 'active', updated_at = ? WHERE id = ?")
+      .run(new Date().toISOString(), id);
   }
 
   deleteRoom(id: string): void {
+    this.db.prepare('DELETE FROM costs WHERE room_id = ?').run(id);
     this.db.prepare('DELETE FROM messages WHERE room_id = ?').run(id);
     this.db.prepare('DELETE FROM sessions WHERE room_id = ?').run(id);
     this.db.prepare('DELETE FROM rooms WHERE id = ?').run(id);

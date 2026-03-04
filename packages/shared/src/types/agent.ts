@@ -3,7 +3,7 @@ export interface AgentToolConfig {
   disallowed: string[];
 }
 
-export type ResponseTrigger = 'always' | 'tagged' | 'called_by_agent' | 'manual';
+export type ResponseTrigger = 'always' | 'tagged' | 'contextual' | 'called_by_agent' | 'manual';
 
 export interface AgentBehaviorConfig {
   responseTrigger: ResponseTrigger;

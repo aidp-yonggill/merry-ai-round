@@ -11,7 +11,7 @@ tools:
 maxTurns: 10
 maxBudgetUsd: 0.50
 behavior:
-  responseTrigger: tagged
+  responseTrigger: contextual
   responseStyle: conversational
   autoGreet: true
   watchPatterns: ["디자인", "UI", "UX", "design", "layout", "style", "색상"]
