@@ -1,7 +1,9 @@
 import type {
   AgentState,
+  AgentDefinition,
   Room,
   CreateRoomRequest,
+  CreateAgentRequest,
   ChatMessage,
   SendMessageRequest,
   AgentInstanceInfo,
@@ -105,6 +107,15 @@ export class ApiClient {
   }
   reloadAgent(id: string) {
     return this.request<AgentState>(`/api/agents/${id}/reload`, { method: 'POST' });
+  }
+  createAgent(data: CreateAgentRequest) {
+    return this.request<AgentDefinition>('/api/agents', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+  deleteAgent(id: string) {
+    return this.request<void>(`/api/agents/${id}`, { method: 'DELETE' });
   }
   getAgentMemory(id: string) {
     return this.request<unknown>(`/api/agents/${id}/memory`);

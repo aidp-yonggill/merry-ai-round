@@ -6,6 +6,7 @@ export type {
   AgentMemoryConfig,
   AgentDefinition,
   AgentModel,
+  CreateAgentRequest,
   AgentStatus,
   AgentState,
 } from './types/agent.js';

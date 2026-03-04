@@ -120,6 +120,32 @@ export class AgentConfigLoader {
     return this.loadOne(`${agentId}.agent.md`);
   }
 
+  /** Create a new .agent.md file from frontmatter + persona */
+  createAgent(id: string, frontmatter: Record<string, unknown>, persona: string): AgentDefinition {
+    if (!/^[a-z0-9][a-z0-9-]*$/.test(id)) {
+      throw new Error(`Invalid agent ID "${id}": must match /^[a-z0-9][a-z0-9-]*$/`);
+    }
+    const filePath = path.join(this.agentsDir, `${id}.agent.md`);
+    if (fs.existsSync(filePath)) {
+      throw new Error(`Agent "${id}" already exists`);
+    }
+    // Ensure agents directory exists
+    if (!fs.existsSync(this.agentsDir)) {
+      fs.mkdirSync(this.agentsDir, { recursive: true });
+    }
+    const content = matter.stringify(persona, frontmatter);
+    fs.writeFileSync(filePath, content, 'utf-8');
+    return this.loadOne(`${id}.agent.md`);
+  }
+
+  /** Delete an agent's .agent.md file */
+  deleteAgent(id: string): boolean {
+    const filePath = path.join(this.agentsDir, `${id}.agent.md`);
+    if (!fs.existsSync(filePath)) return false;
+    fs.unlinkSync(filePath);
+    return true;
+  }
+
   reload(agentId: string): AgentDefinition {
     return this.loadOne(`${agentId}.agent.md`);
   }

@@ -38,6 +38,23 @@ export interface AgentDefinition {
 
 export type AgentModel = AgentDefinition['model'];
 
+export interface CreateAgentRequest {
+  id: string;
+  name: string;
+  slug?: string;
+  model?: AgentModel;
+  avatar?: string;
+  color?: string;
+  tags?: string[];
+  tools?: Partial<AgentToolConfig>;
+  maxTurns?: number;
+  maxBudgetUsd?: number;
+  behavior?: Partial<AgentBehaviorConfig>;
+  memory?: Partial<AgentMemoryConfig>;
+  persona?: string;
+  skipPermissions?: boolean;
+}
+
 export type AgentStatus = 'idle' | 'thinking' | 'responding' | 'error' | 'stopped';
 
 export interface AgentState {

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import type { AgentManager } from '../../core/agent-manager.js';
 import type { MemoryManager } from '../../memory/memory-manager.js';
 import type { AgentConfigLoader } from '../../agent/agent-config-loader.js';
-import type { ApiResponse } from '@merry/shared';
+import type { ApiResponse, CreateAgentRequest } from '@merry/shared';
 
 export function agentRoutes(
   agentManager: AgentManager,
@@ -10,6 +10,46 @@ export function agentRoutes(
   configLoader: AgentConfigLoader,
 ): Router {
   const router = Router();
+
+  // POST /api/agents — create a new agent
+  router.post('/', (req, res) => {
+    const body = req.body as CreateAgentRequest;
+    if (!body.id || !body.name) {
+      res.status(400).json({ ok: false, error: 'id and name are required' } satisfies ApiResponse);
+      return;
+    }
+    if (!/^[a-z0-9][a-z0-9-]*$/.test(body.id)) {
+      res.status(400).json({ ok: false, error: 'id must match /^[a-z0-9][a-z0-9-]*$/' } satisfies ApiResponse);
+      return;
+    }
+    try {
+      const { id, name, persona, ...rest } = body;
+      const frontmatter: Record<string, unknown> = { name, ...rest };
+      delete (frontmatter as Record<string, unknown>)['id'];
+      const def = agentManager.createAgent(id, frontmatter, persona ?? '');
+      res.status(201).json({ ok: true, data: def } satisfies ApiResponse);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const status = msg.includes('already exists') ? 409 : 500;
+      res.status(status).json({ ok: false, error: msg } satisfies ApiResponse);
+    }
+  });
+
+  // DELETE /api/agents/:id — delete an agent
+  router.delete('/:id', (req, res) => {
+    const agent = agentManager.get(req.params.id);
+    if (!agent) {
+      res.status(404).json({ ok: false, error: 'Agent not found' } satisfies ApiResponse);
+      return;
+    }
+    try {
+      agentManager.deleteAgent(req.params.id);
+      res.json({ ok: true } satisfies ApiResponse);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(400).json({ ok: false, error: msg } satisfies ApiResponse);
+    }
+  });
 
   // GET /api/agents
   router.get('/', (_req, res) => {

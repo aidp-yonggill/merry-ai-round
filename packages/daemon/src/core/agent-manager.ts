@@ -76,6 +76,32 @@ export class AgentManager {
     }));
   }
 
+  createAgent(id: string, frontmatter: Record<string, unknown>, persona: string): AgentDefinition {
+    const def = this.configLoader.createAgent(id, frontmatter, persona);
+    const agent: ManagedAgent = {
+      definition: def,
+      status: 'idle',
+      currentRoomId: null,
+      totalTokensUsed: 0,
+      totalCostUsd: 0,
+      lastActiveAt: null,
+    };
+    this.agents.set(def.id, agent);
+    return def;
+  }
+
+  deleteAgent(agentId: string): boolean {
+    const agent = this.agents.get(agentId);
+    if (agent && agent.currentRoomId !== null) {
+      throw new Error(`Agent "${agentId}" is currently active in room ${agent.currentRoomId}`);
+    }
+    const deleted = this.configLoader.deleteAgent(agentId);
+    if (deleted) {
+      this.agents.delete(agentId);
+    }
+    return deleted;
+  }
+
   reload(agentId: string): AgentDefinition {
     const def = this.configLoader.reload(agentId);
     const existing = this.agents.get(agentId);

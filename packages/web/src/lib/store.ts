@@ -20,6 +20,7 @@ interface AppStore {
   agents: AgentState[];
   setAgents: (agents: AgentState[]) => void;
   updateAgentStatus: (agentId: string, status: AgentState['status'], roomId?: string) => void;
+  removeAgent: (agentId: string) => void;
 
   // Rooms
   rooms: Room[];
@@ -129,6 +130,9 @@ export const useStore = create<AppStore>((set, get) => {
         ? { ...a, status, currentRoomId: roomId ?? a.currentRoomId }
         : a
     ),
+  })),
+  removeAgent: (agentId) => set((state) => ({
+    agents: state.agents.filter((a) => a.id !== agentId),
   })),
 
   // Rooms
