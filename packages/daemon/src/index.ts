@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { createServer } from './server.js';
 
-// Allow Claude Agent SDK to spawn Claude Code subprocesses
+// Allow Claude CLI subprocesses to run
 // (prevents "nested session" error when daemon runs inside a Claude Code session)
 delete process.env.CLAUDECODE;
 
@@ -32,6 +32,7 @@ const server = app.listen(config.port, () => {
 
   Agents: ${config.agentsDir}
   Data:   ${config.dataDir}
+  CLI:    ${process.env.CLAUDE_CLI_PATH ?? 'claude (default)'}
   `);
 });
 

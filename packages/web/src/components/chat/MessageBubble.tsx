@@ -1,6 +1,8 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
+import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import type { ChatMessage, AgentState, ToolUseBlock } from '@merry/shared';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ToolUseBlockView } from './ToolUseBlockView';
@@ -15,20 +17,6 @@ interface MessageBubbleProps {
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-function renderContent(text: string) {
-  // Highlight @mentions
-  const parts = text.split(/(@\w+)/g);
-  return parts.map((part, i) =>
-    part.startsWith('@') ? (
-      <span key={i} className="rounded bg-primary/20 px-1 font-medium text-primary">
-        {part}
-      </span>
-    ) : (
-      <span key={i}>{part}</span>
-    )
-  );
 }
 
 export function MessageBubble({ message, agent, streamingContent, activeToolBlocks }: MessageBubbleProps) {
@@ -72,14 +60,18 @@ export function MessageBubble({ message, agent, streamingContent, activeToolBloc
         </div>
         <div
           className={cn(
-            'mt-1 rounded-lg px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap',
+            'mt-1 rounded-lg px-3 py-2 text-sm leading-relaxed',
             isUser
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-card border-l-2'
+              ? 'bg-primary text-primary-foreground whitespace-pre-wrap'
+              : 'bg-card border-l-2 prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-pre:my-2 prose-ul:my-1 prose-ol:my-1'
           )}
           style={!isUser ? { borderLeftColor: agentColor } : undefined}
         >
-          {renderContent(displayContent)}
+          {isUser ? (
+            displayContent
+          ) : (
+            <Markdown remarkPlugins={[remarkGfm]}>{displayContent}</Markdown>
+          )}
           {streamingContent !== undefined && (
             <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-foreground" />
           )}

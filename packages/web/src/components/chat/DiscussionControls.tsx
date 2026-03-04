@@ -2,140 +2,149 @@
 
 import { useCallback, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Play, Pause, Square, SkipForward } from 'lucide-react';
+import { Play, Square, Loader2, AlertCircle } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { useApiClient } from '@/hooks/useApiClient';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import type { AgentInstanceInfo } from '@merry/shared';
 
-interface DiscussionControlsProps {
+interface ChannelAgentControlsProps {
   roomId: string;
 }
 
-export function DiscussionControls({ roomId }: DiscussionControlsProps) {
-  const t = useTranslations('discussion');
-  const discussion = useStore((s) => s.discussionStates.get(roomId));
+export function ChannelAgentControls({ roomId }: ChannelAgentControlsProps) {
+  const t = useTranslations('agents');
+  const instances = useStore((s) => s.agentInstances.get(roomId) ?? []);
   const agents = useStore((s) => s.agents);
   const rooms = useStore((s) => s.rooms);
   const api = useApiClient();
-  const [loading, setLoading] = useState(false);
+  const [loadingAgent, setLoadingAgent] = useState<string | null>(null);
 
   const room = rooms.find((r) => r.id === roomId);
   const memberAgents = agents.filter((a) => room?.members.includes(a.id));
-  const status = discussion?.status ?? 'idle';
 
-  const handleAction = useCallback(async (action: () => Promise<unknown>) => {
-    setLoading(true);
+  const getInstanceForAgent = (agentId: string): AgentInstanceInfo | undefined =>
+    instances.find((i) => i.agentId === agentId);
+
+  const handleStartAgent = useCallback(async (agentId: string) => {
+    setLoadingAgent(agentId);
     try {
-      await action();
-    } catch {
-      // TODO: toast
+      await api.startAgentInRoom(roomId, agentId);
+    } catch (err) {
+      console.error('Failed to start agent:', err);
     } finally {
-      setLoading(false);
+      setLoadingAgent(null);
     }
-  }, []);
+  }, [api, roomId]);
+
+  const handleStopAgent = useCallback(async (agentId: string) => {
+    setLoadingAgent(agentId);
+    try {
+      await api.stopAgentInRoom(roomId, agentId);
+    } catch (err) {
+      console.error('Failed to stop agent:', err);
+    } finally {
+      setLoadingAgent(null);
+    }
+  }, [api, roomId]);
+
+  const handleStartAll = useCallback(async () => {
+    setLoadingAgent('all');
+    try {
+      await api.startAllAgents(roomId);
+    } catch (err) {
+      console.error('Failed to start all agents:', err);
+    } finally {
+      setLoadingAgent(null);
+    }
+  }, [api, roomId]);
+
+  const handleStopAll = useCallback(async () => {
+    setLoadingAgent('all');
+    try {
+      await api.stopAllAgents(roomId);
+    } catch (err) {
+      console.error('Failed to stop all agents:', err);
+    } finally {
+      setLoadingAgent(null);
+    }
+  }, [api, roomId]);
+
+  const hasRunningInstances = instances.some(
+    (i) => i.status === 'running' || i.status === 'spawning'
+  );
 
   return (
     <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
-      <Badge
-        variant={
-          status === 'running' ? 'default' :
-          status === 'paused' ? 'secondary' :
-          'outline'
-        }
-        className="text-xs"
-      >
-        {t(status)}
-      </Badge>
-
-      {status === 'idle' || status === 'stopped' ? (
+      {/* Quick actions */}
+      {!hasRunningInstances ? (
         <Button
           size="sm"
           variant="outline"
-          onClick={() => handleAction(() => api.startDiscussion(roomId))}
-          disabled={loading}
+          onClick={handleStartAll}
+          disabled={loadingAgent !== null || memberAgents.length === 0}
         >
           <Play className="mr-1 h-3 w-3" />
-          {t('start')}
+          {loadingAgent === 'all' ? '...' : t('startAll')}
         </Button>
-      ) : status === 'running' ? (
-        <>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => handleAction(() => api.pauseDiscussion(roomId))}
-            disabled={loading}
-          >
-            <Pause className="mr-1 h-3 w-3" />
-            {t('pause')}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => handleAction(() => api.stopDiscussion(roomId))}
-            disabled={loading}
-          >
-            <Square className="mr-1 h-3 w-3" />
-            {t('stop')}
-          </Button>
-        </>
-      ) : status === 'paused' ? (
-        <>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => handleAction(() => api.resumeDiscussion(roomId))}
-            disabled={loading}
-          >
-            <Play className="mr-1 h-3 w-3" />
-            {t('resume')}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => handleAction(() => api.stopDiscussion(roomId))}
-            disabled={loading}
-          >
-            <Square className="mr-1 h-3 w-3" />
-            {t('stop')}
-          </Button>
-        </>
-      ) : null}
-
-      {/* Assign turn manually */}
-      {(status === 'running' || status === 'paused') && memberAgents.length > 0 && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="ghost">
-              <SkipForward className="mr-1 h-3 w-3" />
-              {t('assign')}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {memberAgents.map((agent) => (
-              <DropdownMenuItem
-                key={agent.id}
-                onClick={() => handleAction(() => api.assignTurn(roomId, { agentId: agent.id }))}
-              >
-                <span className="mr-2">{agent.definition.avatar}</span>
-                {agent.definition.name}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+      ) : (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleStopAll}
+          disabled={loadingAgent !== null}
+        >
+          <Square className="mr-1 h-3 w-3" />
+          {loadingAgent === 'all' ? '...' : t('stopAll')}
+        </Button>
       )}
 
-      {discussion && discussion.totalTurns > 0 && (
+      {/* Per-agent status badges with toggle */}
+      {memberAgents.map((agent) => {
+        const instance = getInstanceForAgent(agent.id);
+        const isRunning = instance?.status === 'running' || instance?.status === 'spawning';
+        const isLoading = loadingAgent === agent.id;
+        const isCrashed = instance?.status === 'crashed';
+
+        return (
+          <button
+            key={agent.id}
+            onClick={() => isRunning ? handleStopAgent(agent.id) : handleStartAgent(agent.id)}
+            disabled={loadingAgent !== null}
+            className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors hover:bg-accent disabled:opacity-50"
+            style={{ borderColor: agent.definition.color + '40' }}
+            title={isRunning ? `Stop ${agent.definition.name}` : `Start ${agent.definition.name}`}
+          >
+            <span>{agent.definition.avatar}</span>
+            <span style={{ color: agent.definition.color }} className="font-medium">
+              {agent.definition.slug}
+            </span>
+            {isLoading ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : isCrashed ? (
+              <AlertCircle className="h-3 w-3 text-destructive" />
+            ) : (
+              <span
+                className="h-1.5 w-1.5 rounded-full"
+                style={{
+                  backgroundColor: isRunning ? '#22c55e' : '#6b7280',
+                }}
+              />
+            )}
+          </button>
+        );
+      })}
+
+      {/* Instance count */}
+      {instances.length > 0 && (
         <span className="text-xs text-muted-foreground">
-          {t('turn')} {discussion.totalTurns}
+          {instances.filter(i => i.status === 'running').length}/{memberAgents.length}
         </span>
       )}
     </div>
   );
 }
+
+// Backward-compatible alias
+export { ChannelAgentControls as DiscussionControls };

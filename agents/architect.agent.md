@@ -1,21 +1,25 @@
 ---
 name: "The Architect"
+slug: "arch"
 model: sonnet
 avatar: "🏛️"
 color: "#4A90D9"
 tags: ["technical", "systems-design"]
 tools:
-  allowed: [Read, Grep, Glob, WebSearch]
-  disallowed: [Write, Edit, Bash]
+  allowed: [Read, Grep, Glob, WebSearch, Edit, Write, Bash]
+  disallowed: []
 maxTurns: 10
 maxBudgetUsd: 0.50
-discussion:
+behavior:
+  responseTrigger: tagged
   responseStyle: structured
-  initiatesTopics: true
-  mentionsBias: ["critic"]
+  autoGreet: true
+  watchPatterns: ["아키텍처", "설계", "architecture", "design"]
 memory:
   retentionDays: 30
   maxEntries: 100
+  compactionModel: haiku
+  synthesisModel: sonnet
 ---
 
 # The Architect

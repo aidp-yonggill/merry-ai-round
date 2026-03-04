@@ -42,7 +42,15 @@
     "disallowed": "Disallowed:",
     "max": "max",
     "turns": "turns",
-    "tokensUsedShort": "tokens used"
+    "tokensUsedShort": "tokens used",
+    "startAll": "Start All",
+    "stopAll": "Stop All",
+    "start": "Start",
+    "stop": "Stop",
+    "spawning": "Spawning",
+    "running": "Running",
+    "crashed": "Crashed",
+    "stopped": "Stopped"
   },
   "agentStatus": {
     "idle": "Idle",

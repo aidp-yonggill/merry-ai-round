@@ -3,7 +3,7 @@ import type {
   AgentState,
   Room,
   ChatMessage,
-  DiscussionState,
+  AgentInstanceInfo,
   ToolUseBlock,
 } from '@merry/shared';
 
@@ -44,9 +44,11 @@ interface AppStore {
   updateToolBlock: (messageId: string, toolUseId: string, update: Partial<ToolUseBlock>) => void;
   clearToolBlocks: (messageId: string) => void;
 
-  // Discussions
-  discussionStates: Map<string, DiscussionState>;
-  setDiscussionState: (roomId: string, state: DiscussionState) => void;
+  // Agent Instances (roomId → instances)
+  agentInstances: Map<string, AgentInstanceInfo[]>;
+  setRoomInstances: (roomId: string, instances: AgentInstanceInfo[]) => void;
+  updateInstance: (instance: AgentInstanceInfo) => void;
+  removeInstance: (instanceId: string, roomId: string) => void;
 
   // UI
   sidebarOpen: boolean;
@@ -54,7 +56,57 @@ interface AppStore {
   toggleSidebar: () => void;
 }
 
-export const useStore = create<AppStore>((set) => ({
+const STREAM_TTL_MS = 30_000;
+
+const streamTimestamps = new Map<string, number>();
+const toolBlockTimestamps = new Map<string, number>();
+
+let ttlCleanupInterval: ReturnType<typeof setInterval> | undefined;
+
+function startTTLCleanup(getState: () => AppStore) {
+  if (ttlCleanupInterval) return;
+  ttlCleanupInterval = setInterval(() => {
+    const now = Date.now();
+    const state = getState();
+
+    // Clean stale streaming messages
+    let streamDirty = false;
+    const nextStream = new Map(state.streamingMessages);
+    for (const [id, ts] of streamTimestamps) {
+      if (now - ts > STREAM_TTL_MS) {
+        nextStream.delete(id);
+        streamTimestamps.delete(id);
+        streamDirty = true;
+      }
+    }
+
+    // Clean stale tool blocks
+    let toolDirty = false;
+    const nextTools = new Map(state.activeToolBlocks);
+    for (const [id, ts] of toolBlockTimestamps) {
+      if (now - ts > STREAM_TTL_MS) {
+        nextTools.delete(id);
+        toolBlockTimestamps.delete(id);
+        toolDirty = true;
+      }
+    }
+
+    if (streamDirty || toolDirty) {
+      useStore.setState({
+        ...(streamDirty ? { streamingMessages: nextStream } : {}),
+        ...(toolDirty ? { activeToolBlocks: nextTools } : {}),
+      });
+    }
+  }, 10_000);
+}
+
+export const useStore = create<AppStore>((set, get) => {
+  // Start TTL cleanup once store is created
+  if (typeof window !== 'undefined') {
+    setTimeout(() => startTTLCleanup(get), 0);
+  }
+
+  return {
   // Connection
   daemonUrl: typeof window !== 'undefined'
     ? localStorage.getItem('merry-daemon-url') ?? DEFAULT_DAEMON_URL
@@ -103,12 +155,14 @@ export const useStore = create<AppStore>((set) => ({
   // Streaming
   streamingMessages: new Map(),
   appendStreamChunk: (messageId, chunk) => set((state) => {
+    streamTimestamps.set(messageId, Date.now());
     const next = new Map(state.streamingMessages);
     const current = next.get(messageId) ?? '';
     next.set(messageId, current + chunk);
     return { streamingMessages: next };
   }),
   clearStream: (messageId) => set((state) => {
+    streamTimestamps.delete(messageId);
     const next = new Map(state.streamingMessages);
     next.delete(messageId);
     return { streamingMessages: next };
@@ -117,12 +171,14 @@ export const useStore = create<AppStore>((set) => ({
   // Tool Use
   activeToolBlocks: new Map(),
   addToolBlock: (messageId, block) => set((state) => {
+    toolBlockTimestamps.set(messageId, Date.now());
     const next = new Map(state.activeToolBlocks);
     const existing = next.get(messageId) ?? [];
     next.set(messageId, [...existing, block]);
     return { activeToolBlocks: next };
   }),
   updateToolBlock: (messageId, toolUseId, update) => set((state) => {
+    toolBlockTimestamps.set(messageId, Date.now());
     const next = new Map(state.activeToolBlocks);
     const blocks = next.get(messageId);
     if (blocks) {
@@ -133,21 +189,42 @@ export const useStore = create<AppStore>((set) => ({
     return { activeToolBlocks: next };
   }),
   clearToolBlocks: (messageId) => set((state) => {
+    toolBlockTimestamps.delete(messageId);
     const next = new Map(state.activeToolBlocks);
     next.delete(messageId);
     return { activeToolBlocks: next };
   }),
 
-  // Discussions
-  discussionStates: new Map(),
-  setDiscussionState: (roomId, ds) => set((state) => {
-    const next = new Map(state.discussionStates);
-    next.set(roomId, ds);
-    return { discussionStates: next };
+  // Agent Instances
+  agentInstances: new Map(),
+  setRoomInstances: (roomId, instances) => set((state) => {
+    const next = new Map(state.agentInstances);
+    next.set(roomId, instances);
+    return { agentInstances: next };
+  }),
+  updateInstance: (instance) => set((state) => {
+    const next = new Map(state.agentInstances);
+    const existing = next.get(instance.roomId) ?? [];
+    const idx = existing.findIndex((i) => i.instanceId === instance.instanceId);
+    if (idx >= 0) {
+      const updated = [...existing];
+      updated[idx] = instance;
+      next.set(instance.roomId, updated);
+    } else {
+      next.set(instance.roomId, [...existing, instance]);
+    }
+    return { agentInstances: next };
+  }),
+  removeInstance: (instanceId, roomId) => set((state) => {
+    const next = new Map(state.agentInstances);
+    const existing = next.get(roomId) ?? [];
+    next.set(roomId, existing.filter((i) => i.instanceId !== instanceId));
+    return { agentInstances: next };
   }),
 
   // UI
   sidebarOpen: false,
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
-}));
+};
+});

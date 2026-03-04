@@ -42,7 +42,15 @@
     "disallowed": "차단:",
     "max": "최대",
     "turns": "턴",
-    "tokensUsedShort": "토큰 사용"
+    "tokensUsedShort": "토큰 사용",
+    "startAll": "전체 시작",
+    "stopAll": "전체 중지",
+    "start": "시작",
+    "stop": "중지",
+    "spawning": "시작 중",
+    "running": "실행 중",
+    "crashed": "충돌",
+    "stopped": "중지됨"
   },
   "agentStatus": {
     "idle": "대기 중",

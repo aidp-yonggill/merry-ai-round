@@ -1,13 +1,16 @@
-// Types
+// Types — Agent
 export type {
   AgentToolConfig,
-  AgentDiscussionConfig,
+  AgentBehaviorConfig,
+  ResponseTrigger,
   AgentMemoryConfig,
   AgentDefinition,
+  AgentModel,
   AgentStatus,
   AgentState,
 } from './types/agent.js';
 
+// Types — Room
 export type {
   RoomType,
   TurnStrategy,
@@ -15,6 +18,7 @@ export type {
   CreateRoomRequest,
 } from './types/room.js';
 
+// Types — Message
 export type {
   MessageRole,
   MessageMetadata,
@@ -24,26 +28,43 @@ export type {
   SendMessageRequest,
 } from './types/message.js';
 
+// Types — Process
 export type {
-  DiscussionStatus,
-  DiscussionTurn,
-  DiscussionState,
-  AssignTurnRequest,
-} from './types/discussion.js';
+  InstanceStatus,
+  AgentInstanceInfo,
+} from './types/process.js';
 
+// Types — Memory
+export type {
+  ShortTermTurnEntry,
+  ShortTermMemory,
+  SynthesizedFact,
+  AgentRelationship,
+  LongTermSynthesis,
+  CompactedFact,
+  CompactedSession,
+} from './types/memory.js';
+
+// Types — SSE Events
 export type {
   SSEEventType,
   SSEEvent,
   MessageNewEvent,
   MessageStreamEvent,
   AgentStatusEvent,
-  DiscussionStateEvent,
+  InstanceSpawningEvent,
+  InstanceRunningEvent,
+  InstanceStoppedEvent,
+  InstanceCrashedEvent,
+  InstanceResourceEvent,
+  MemoryCompactionEvent,
   ToolStartEvent,
   ToolProgressEvent,
   ToolCompleteEvent,
   HeartbeatEvent,
 } from './types/events.js';
 
+// Types — API
 export type {
   ApiResponse,
   PaginatedRequest,
@@ -56,4 +77,4 @@ export type {
 // Utils
 export { generateId, generateRoomId, generateMessageId } from './utils/id.js';
 export { parseMessage } from './utils/message-parser.js';
-export type { ParsedMessage } from './utils/message-parser.js';
+export type { ParsedMessage, MentionMatch, MentionMatchType, AgentLookupEntry } from './utils/message-parser.js';

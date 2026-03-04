@@ -14,6 +14,8 @@ export interface ToolUseBlock {
 export interface MessageMetadata {
   model?: string;
   tokensUsed?: number;
+  tokensIn?: number;
+  tokensOut?: number;
   costUsd?: number;
   turnNumber?: number;
   mentions?: string[];

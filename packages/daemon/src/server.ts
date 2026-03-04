@@ -7,15 +7,19 @@ import type { ApiResponse, SystemHealth, SystemConfig, CostSummary } from '@merr
 import { AgentManager } from './core/agent-manager.js';
 import { RoomManager } from './core/room-manager.js';
 import { MessageRouter } from './core/message-router.js';
-import { DiscussionEngine } from './core/discussion-engine.js';
-import { MemoryStore } from './agent/memory-store.js';
+import { MessageDispatcher } from './core/message-dispatcher.js';
+import { ProcessManager } from './process/process-manager.js';
+import { MemoryManager } from './memory/memory-manager.js';
+import { MemoryCompactor } from './memory/memory-compactor.js';
+import { MemorySynthesizer } from './memory/memory-synthesizer.js';
+import { AgentConfigLoader } from './agent/agent-config-loader.js';
 import { SqliteStore } from './storage/sqlite-store.js';
 import { SSEManager } from './api/sse/sse-manager.js';
 
 import { agentRoutes } from './api/routes/agents.js';
 import { roomRoutes } from './api/routes/rooms.js';
 import { messageRoutes } from './api/routes/messages.js';
-import { discussionRoutes } from './api/routes/discussion.js';
+import { instanceRoutes } from './api/routes/instances.js';
 
 export interface DaemonConfig {
   port: number;
@@ -35,16 +39,42 @@ export function createServer(config: DaemonConfig): { app: express.Express; shut
   }));
   app.use(express.json());
 
-  // Initialize stores and managers
+  // Initialize stores
   const store = new SqliteStore(config.dataDir);
-  const memoryStore = new MemoryStore(config.dataDir);
   const sse = new SSEManager();
+
+  // Memory system
+  const memoryManager = new MemoryManager(config.dataDir);
+  const compactor = new MemoryCompactor(memoryManager, {
+    cliPath: process.env.CLAUDE_CLI_PATH,
+  });
+  const synthesizer = new MemorySynthesizer(memoryManager, {
+    cliPath: process.env.CLAUDE_CLI_PATH,
+  });
+
+  // Agent management
+  const configLoader = new AgentConfigLoader(config.agentsDir);
   const agentManager = new AgentManager(config.agentsDir);
-  agentManager.setMemoryStore(memoryStore);
   agentManager.setSqliteStore(store);
+
+  // Process management
+  const processManager = new ProcessManager(memoryManager, compactor, synthesizer, {
+    cliPath: process.env.CLAUDE_CLI_PATH,
+  });
+
+  // Room & message management
   const roomManager = new RoomManager(store);
   const messageRouter = new MessageRouter(store, sse);
-  const discussionEngine = new DiscussionEngine(agentManager, messageRouter, sse, store, memoryStore);
+
+  // Message dispatcher (replaces discussion engine)
+  const dispatcher = new MessageDispatcher(
+    processManager,
+    agentManager,
+    messageRouter,
+    memoryManager,
+    sse,
+    store,
+  );
 
   // Load agents from disk
   agentManager.loadAll();
@@ -57,18 +87,17 @@ export function createServer(config: DaemonConfig): { app: express.Express; shut
   });
 
   // --- API Routes ---
-  app.use('/api/agents', agentRoutes(agentManager, memoryStore));
+  app.use('/api/agents', agentRoutes(agentManager, memoryManager, configLoader));
   app.use('/api/rooms', roomRoutes(roomManager));
+  app.use('/api/instances', instanceRoutes(processManager, agentManager, roomManager));
 
-  // Message and discussion routes need room ID prefix
+  // Room-scoped routes
   const roomScopedRouter = express.Router();
-  const msgRoutes = messageRoutes(messageRouter, roomManager, agentManager, discussionEngine, sse);
-  const discRoutes = discussionRoutes(discussionEngine, roomManager);
+  const msgRoutes = messageRoutes(messageRouter, roomManager, dispatcher);
+  const instRoutes = instanceRoutes(processManager, agentManager, roomManager);
 
-  // Mount message routes: /api/rooms/:id/messages
   roomScopedRouter.use('/', msgRoutes);
-  // Mount discussion routes: /api/rooms/:id/discussion/*
-  roomScopedRouter.use('/', discRoutes);
+  roomScopedRouter.use('/', instRoutes);
   app.use('/api/rooms', roomScopedRouter);
 
   // --- System Endpoints ---
@@ -80,14 +109,14 @@ export function createServer(config: DaemonConfig): { app: express.Express; shut
       uptime: Math.floor((Date.now() - startTime) / 1000),
       activeAgents: agents.filter(a => a.status !== 'idle' && a.status !== 'stopped').length,
       activeRooms: rooms.length,
-      activeDiscussions: 0, // TODO: track from discussion engine
+      activeInstances: processManager.getAllInstances().length,
     };
     res.json({ ok: true, data: health } satisfies ApiResponse);
   });
 
   app.get('/api/system/config', (_req, res) => {
     const sysConfig: SystemConfig = {
-      version: '0.1.0',
+      version: '0.2.0',
       agentsDir: path.resolve(config.agentsDir),
       dataDir: path.resolve(config.dataDir),
       port: config.port,
@@ -103,6 +132,7 @@ export function createServer(config: DaemonConfig): { app: express.Express; shut
   // Cleanup function
   const shutdown = () => {
     console.log('[Server] Shutting down...');
+    processManager.shutdownAll().catch(console.error);
     sse.stop();
     store.close();
   };

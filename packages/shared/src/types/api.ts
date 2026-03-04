@@ -20,7 +20,7 @@ export interface SystemHealth {
   uptime: number;
   activeAgents: number;
   activeRooms: number;
-  activeDiscussions: number;
+  activeInstances: number;
 }
 
 export interface SystemConfig {

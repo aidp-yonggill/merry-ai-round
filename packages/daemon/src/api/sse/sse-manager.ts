@@ -50,7 +50,7 @@ export class SSEManager {
     const data = `data: ${JSON.stringify(event)}\n\n`;
 
     for (const client of this.clients.values()) {
-      if (!client.roomId || client.roomId === roomId) {
+      if (client.roomId === roomId) {
         try {
           client.res.write(data);
         } catch {

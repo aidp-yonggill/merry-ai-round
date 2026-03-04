@@ -1,10 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import matter from 'gray-matter';
-import type { AgentDefinition } from '@merry/shared';
+import type { AgentDefinition, AgentBehaviorConfig, ResponseTrigger } from '@merry/shared';
 
 interface RawFrontmatter {
   name?: string;
+  slug?: string;
   model?: string;
   avatar?: string;
   color?: string;
@@ -12,15 +13,22 @@ interface RawFrontmatter {
   tools?: { allowed?: string[]; disallowed?: string[] };
   maxTurns?: number;
   maxBudgetUsd?: number;
-  discussion?: {
+  behavior?: {
+    responseTrigger?: string;
     responseStyle?: string;
-    initiatesTopics?: boolean;
-    mentionsBias?: string[];
+    autoGreet?: boolean;
+    watchPatterns?: string[];
   };
-  memory?: { retentionDays?: number; maxEntries?: number };
+  memory?: {
+    retentionDays?: number;
+    maxEntries?: number;
+    compactionModel?: string;
+    synthesisModel?: string;
+  };
+  skipPermissions?: boolean;
 }
 
-const DEFAULTS: Omit<AgentDefinition, 'id' | 'persona'> = {
+const DEFAULTS: Omit<AgentDefinition, 'id' | 'slug' | 'persona'> = {
   name: 'Unnamed Agent',
   model: 'sonnet',
   avatar: '🤖',
@@ -29,9 +37,16 @@ const DEFAULTS: Omit<AgentDefinition, 'id' | 'persona'> = {
   tools: { allowed: ['Read', 'Grep', 'Glob', 'WebSearch'], disallowed: [] },
   maxTurns: 5,
   maxBudgetUsd: 0.50,
-  discussion: { responseStyle: 'conversational', initiatesTopics: false, mentionsBias: [] },
+  behavior: {
+    responseTrigger: 'tagged',
+    responseStyle: 'conversational',
+    autoGreet: false,
+  },
   memory: { retentionDays: 30, maxEntries: 100 },
 };
+
+const VALID_TRIGGERS: ResponseTrigger[] = ['always', 'tagged', 'called_by_agent', 'manual'];
+const VALID_STYLES: AgentBehaviorConfig['responseStyle'][] = ['structured', 'conversational', 'brief'];
 
 export class AgentConfigLoader {
   private agentsDir: string;
@@ -55,9 +70,14 @@ export class AgentConfigLoader {
     const { data, content } = matter(raw) as { data: RawFrontmatter; content: string };
 
     const id = filename.replace('.agent.md', '');
+    const slug = data.slug ?? id.slice(0, 4); // default: first 4 chars of id
+
+    const trigger = data.behavior?.responseTrigger as ResponseTrigger | undefined;
+    const style = data.behavior?.responseStyle as AgentBehaviorConfig['responseStyle'] | undefined;
 
     return {
       id,
+      slug,
       name: data.name ?? DEFAULTS.name,
       model: (data.model as AgentDefinition['model']) ?? DEFAULTS.model,
       avatar: data.avatar ?? DEFAULTS.avatar,
@@ -69,17 +89,35 @@ export class AgentConfigLoader {
       },
       maxTurns: data.maxTurns ?? DEFAULTS.maxTurns,
       maxBudgetUsd: data.maxBudgetUsd ?? DEFAULTS.maxBudgetUsd,
-      discussion: {
-        responseStyle: (data.discussion?.responseStyle as AgentDefinition['discussion']['responseStyle']) ?? DEFAULTS.discussion.responseStyle,
-        initiatesTopics: data.discussion?.initiatesTopics ?? DEFAULTS.discussion.initiatesTopics,
-        mentionsBias: data.discussion?.mentionsBias ?? DEFAULTS.discussion.mentionsBias,
+      behavior: {
+        responseTrigger: trigger && VALID_TRIGGERS.includes(trigger) ? trigger : DEFAULTS.behavior.responseTrigger,
+        responseStyle: style && VALID_STYLES.includes(style) ? style : DEFAULTS.behavior.responseStyle,
+        autoGreet: data.behavior?.autoGreet ?? DEFAULTS.behavior.autoGreet,
+        watchPatterns: data.behavior?.watchPatterns,
       },
       memory: {
         retentionDays: data.memory?.retentionDays ?? DEFAULTS.memory.retentionDays,
         maxEntries: data.memory?.maxEntries ?? DEFAULTS.memory.maxEntries,
+        compactionModel: (data.memory?.compactionModel as 'haiku' | 'sonnet') ?? undefined,
+        synthesisModel: (data.memory?.synthesisModel as 'haiku' | 'sonnet') ?? undefined,
       },
       persona: content.trim(),
+      skipPermissions: data.skipPermissions ?? true,
     };
+  }
+
+  /** Get the raw .agent.md file content */
+  getRawConfig(agentId: string): string | null {
+    const filePath = path.join(this.agentsDir, `${agentId}.agent.md`);
+    if (!fs.existsSync(filePath)) return null;
+    return fs.readFileSync(filePath, 'utf-8');
+  }
+
+  /** Write raw .agent.md file content and reload */
+  saveRawConfig(agentId: string, content: string): AgentDefinition {
+    const filePath = path.join(this.agentsDir, `${agentId}.agent.md`);
+    fs.writeFileSync(filePath, content, 'utf-8');
+    return this.loadOne(`${agentId}.agent.md`);
   }
 
   reload(agentId: string): AgentDefinition {

@@ -4,26 +4,84 @@ import type {
   CreateRoomRequest,
   ChatMessage,
   SendMessageRequest,
-  DiscussionState,
-  AssignTurnRequest,
+  AgentInstanceInfo,
   ApiResponse,
   PaginatedResponse,
   SystemHealth,
   SystemConfig,
   CostSummary,
-  TurnStrategy,
 } from '@merry/shared';
+
+const FETCH_TIMEOUT_MS = 10_000;
+
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly code?: string,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+
+  static fromStatus(status: number, serverMessage?: string): ApiError {
+    const fallback: Record<number, string> = {
+      400: 'Bad request',
+      401: 'Unauthorized',
+      403: 'Forbidden',
+      404: 'Not found',
+      409: 'Conflict',
+      429: 'Too many requests',
+      500: 'Internal server error',
+      502: 'Bad gateway',
+      503: 'Service unavailable',
+    };
+    const message = serverMessage ?? fallback[status] ?? `HTTP error ${status}`;
+    return new ApiError(message, status);
+  }
+}
 
 export class ApiClient {
   constructor(private baseUrl: string) {}
 
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
-    const res = await fetch(`${this.baseUrl}${path}`, {
-      ...init,
-      headers: { 'Content-Type': 'application/json', ...init?.headers },
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+    let res: Response;
+    try {
+      res = await fetch(`${this.baseUrl}${path}`, {
+        ...init,
+        signal: controller.signal,
+        headers: { 'Content-Type': 'application/json', ...init?.headers },
+      });
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        throw new ApiError('Request timed out', 0, 'TIMEOUT');
+      }
+      throw new ApiError(
+        err instanceof Error ? err.message : 'Network error',
+        0,
+        'NETWORK',
+      );
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
+    if (!res.ok) {
+      let serverMessage: string | undefined;
+      try {
+        const body = await res.json();
+        serverMessage = body.error;
+      } catch {
+        // ignore parse errors
+      }
+      throw ApiError.fromStatus(res.status, serverMessage);
+    }
+
     const json: ApiResponse<T> = await res.json();
-    if (!json.ok) throw new Error(json.error ?? 'Unknown API error');
+    if (!json.ok) throw new ApiError(json.error ?? 'Unknown API error', res.status);
     return json.data as T;
   }
 
@@ -47,9 +105,6 @@ export class ApiClient {
   }
   reloadAgent(id: string) {
     return this.request<AgentState>(`/api/agents/${id}/reload`, { method: 'POST' });
-  }
-  stopAgent(id: string) {
-    return this.request<void>(`/api/agents/${id}/stop`, { method: 'POST' });
   }
   getAgentMemory(id: string) {
     return this.request<unknown>(`/api/agents/${id}/memory`);
@@ -101,35 +156,43 @@ export class ApiClient {
     });
   }
 
-  // --- Discussion ---
-  getDiscussion(roomId: string) {
-    return this.request<DiscussionState>(`/api/rooms/${roomId}/discussion`);
+  // --- Instances ---
+  startAgentInRoom(roomId: string, agentId: string) {
+    return this.request<AgentInstanceInfo>(`/api/rooms/${roomId}/agents/${agentId}/start`, { method: 'POST' });
   }
-  startDiscussion(roomId: string, opts?: { strategy?: TurnStrategy; turns?: number }) {
-    return this.request<DiscussionState>(`/api/rooms/${roomId}/discussion/start`, {
-      method: 'POST',
-      body: JSON.stringify(opts ?? {}),
+  stopAgentInRoom(roomId: string, agentId: string) {
+    return this.request<void>(`/api/rooms/${roomId}/agents/${agentId}/stop`, { method: 'POST' });
+  }
+  startAllAgents(roomId: string) {
+    return this.request<AgentInstanceInfo[]>(`/api/rooms/${roomId}/agents/start-all`, { method: 'POST' });
+  }
+  stopAllAgents(roomId: string) {
+    return this.request<void>(`/api/rooms/${roomId}/agents/stop-all`, { method: 'POST' });
+  }
+  getRoomInstances(roomId: string) {
+    return this.request<AgentInstanceInfo[]>(`/api/rooms/${roomId}/agents/instances`);
+  }
+  getAllInstances() {
+    return this.request<AgentInstanceInfo[]>('/api/instances');
+  }
+
+  // --- Agent Config ---
+  getAgentConfig(id: string) {
+    return this.request<string>(`/api/agents/${id}/config`);
+  }
+  updateAgentConfig(id: string, content: string) {
+    return this.request<unknown>(`/api/agents/${id}/config`, {
+      method: 'PUT',
+      body: JSON.stringify({ content }),
     });
   }
-  pauseDiscussion(roomId: string) {
-    return this.request<DiscussionState>(`/api/rooms/${roomId}/discussion/pause`, {
-      method: 'POST',
-    });
+  getAgentRules(id: string) {
+    return this.request<string>(`/api/agents/${id}/rules`);
   }
-  resumeDiscussion(roomId: string) {
-    return this.request<DiscussionState>(`/api/rooms/${roomId}/discussion/resume`, {
-      method: 'POST',
-    });
-  }
-  stopDiscussion(roomId: string) {
-    return this.request<DiscussionState>(`/api/rooms/${roomId}/discussion/stop`, {
-      method: 'POST',
-    });
-  }
-  assignTurn(roomId: string, data: AssignTurnRequest) {
-    return this.request<DiscussionState>(`/api/rooms/${roomId}/discussion/assign`, {
-      method: 'POST',
-      body: JSON.stringify(data),
+  updateAgentRules(id: string, content: string) {
+    return this.request<unknown>(`/api/agents/${id}/rules`, {
+      method: 'PUT',
+      body: JSON.stringify({ content }),
     });
   }
 }

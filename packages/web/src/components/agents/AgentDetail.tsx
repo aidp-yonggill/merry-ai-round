@@ -53,7 +53,7 @@ export function AgentDetail({ agent, open, onClose }: AgentDetailProps) {
             <StatBlock label={t('tokensUsed')} value={agent.totalTokensUsed.toLocaleString()} />
             <StatBlock label={t('cost')} value={`$${agent.totalCostUsd.toFixed(4)}`} />
             <StatBlock label={t('budget')} value={`$${def.maxBudgetUsd.toFixed(2)}`} />
-            <StatBlock label={t('responseStyle')} value={def.discussion.responseStyle} />
+            <StatBlock label={t('responseStyle')} value={def.behavior.responseStyle} />
           </div>
 
           <Separator />

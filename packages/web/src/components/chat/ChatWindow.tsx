@@ -14,11 +14,11 @@ interface ChatWindowProps {
 
 export function ChatWindow({ roomId }: ChatWindowProps) {
   const setMessages = useStore((s) => s.setMessages);
-  const setDiscussionState = useStore((s) => s.setDiscussionState);
+  const setRoomInstances = useStore((s) => s.setRoomInstances);
   const connected = useStore((s) => s.connected);
   const api = useApiClient();
 
-  // Load messages and discussion state when room is selected
+  // Load messages and instance state when room is selected
   useEffect(() => {
     if (!connected) return;
 
@@ -26,10 +26,10 @@ export function ChatWindow({ roomId }: ChatWindowProps) {
       setMessages(roomId, res.items);
     }).catch(() => {});
 
-    api.getDiscussion(roomId).then((ds) => {
-      setDiscussionState(roomId, ds);
+    api.getRoomInstances(roomId).then((instances) => {
+      setRoomInstances(roomId, instances);
     }).catch(() => {});
-  }, [roomId, connected, api, setMessages, setDiscussionState]);
+  }, [roomId, connected, api, setMessages, setRoomInstances]);
 
   return (
     <div className="flex h-full flex-col">

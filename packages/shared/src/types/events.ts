@@ -1,12 +1,17 @@
 import type { ChatMessage } from './message.js';
 import type { AgentStatus } from './agent.js';
-import type { DiscussionState } from './discussion.js';
+import type { AgentInstanceInfo } from './process.js';
 
 export type SSEEventType =
   | 'message:new'
   | 'message:stream'
   | 'agent:status'
-  | 'discussion:state'
+  | 'instance:spawning'
+  | 'instance:running'
+  | 'instance:stopped'
+  | 'instance:crashed'
+  | 'instance:resource'
+  | 'memory:compaction'
   | 'tool:start'
   | 'tool:progress'
   | 'tool:complete'
@@ -37,9 +42,45 @@ export interface AgentStatusEvent {
   };
 }
 
-export interface DiscussionStateEvent {
-  type: 'discussion:state';
-  data: DiscussionState;
+export interface InstanceSpawningEvent {
+  type: 'instance:spawning';
+  data: AgentInstanceInfo;
+}
+
+export interface InstanceRunningEvent {
+  type: 'instance:running';
+  data: AgentInstanceInfo;
+}
+
+export interface InstanceStoppedEvent {
+  type: 'instance:stopped';
+  data: { instanceId: string; agentId: string; roomId: string };
+}
+
+export interface InstanceCrashedEvent {
+  type: 'instance:crashed';
+  data: { instanceId: string; agentId: string; roomId: string; error: string };
+}
+
+export interface InstanceResourceEvent {
+  type: 'instance:resource';
+  data: {
+    instanceId: string;
+    agentId: string;
+    roomId: string;
+    tokensUsed: number;
+    costUsd: number;
+  };
+}
+
+export interface MemoryCompactionEvent {
+  type: 'memory:compaction';
+  data: {
+    agentId: string;
+    roomId?: string;
+    phase: 'started' | 'compacting' | 'synthesizing' | 'completed' | 'failed';
+    message?: string;
+  };
 }
 
 export interface ToolStartEvent {
@@ -88,7 +129,12 @@ export type SSEEvent =
   | MessageNewEvent
   | MessageStreamEvent
   | AgentStatusEvent
-  | DiscussionStateEvent
+  | InstanceSpawningEvent
+  | InstanceRunningEvent
+  | InstanceStoppedEvent
+  | InstanceCrashedEvent
+  | InstanceResourceEvent
+  | MemoryCompactionEvent
   | ToolStartEvent
   | ToolProgressEvent
   | ToolCompleteEvent

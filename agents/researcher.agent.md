@@ -1,5 +1,6 @@
 ---
 name: "The Researcher"
+slug: "res"
 model: sonnet
 avatar: "📚"
 color: "#27AE60"
@@ -9,13 +10,16 @@ tools:
   disallowed: [Write, Edit, Bash]
 maxTurns: 10
 maxBudgetUsd: 0.60
-discussion:
+behavior:
+  responseTrigger: tagged
   responseStyle: conversational
-  initiatesTopics: true
-  mentionsBias: []
+  autoGreet: false
+  watchPatterns: ["연구", "조사", "research", "investigate", "compare"]
 memory:
   retentionDays: 30
   maxEntries: 150
+  compactionModel: haiku
+  synthesisModel: sonnet
 ---
 
 # The Researcher

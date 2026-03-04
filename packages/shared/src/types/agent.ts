@@ -3,19 +3,25 @@ export interface AgentToolConfig {
   disallowed: string[];
 }
 
-export interface AgentDiscussionConfig {
+export type ResponseTrigger = 'always' | 'tagged' | 'called_by_agent' | 'manual';
+
+export interface AgentBehaviorConfig {
+  responseTrigger: ResponseTrigger;
   responseStyle: 'structured' | 'conversational' | 'brief';
-  initiatesTopics: boolean;
-  mentionsBias: string[];
+  autoGreet: boolean;
+  watchPatterns?: string[];
 }
 
 export interface AgentMemoryConfig {
   retentionDays: number;
   maxEntries: number;
+  compactionModel?: 'haiku' | 'sonnet';
+  synthesisModel?: 'haiku' | 'sonnet';
 }
 
 export interface AgentDefinition {
   id: string;
+  slug: string;
   name: string;
   model: 'sonnet' | 'opus' | 'haiku';
   avatar: string;
@@ -24,10 +30,13 @@ export interface AgentDefinition {
   tools: AgentToolConfig;
   maxTurns: number;
   maxBudgetUsd: number;
-  discussion: AgentDiscussionConfig;
+  behavior: AgentBehaviorConfig;
   memory: AgentMemoryConfig;
   persona: string; // markdown body
+  skipPermissions?: boolean; // default true for backward compat
 }
+
+export type AgentModel = AgentDefinition['model'];
 
 export type AgentStatus = 'idle' | 'thinking' | 'responding' | 'error' | 'stopped';
 
@@ -35,7 +44,6 @@ export interface AgentState {
   id: string;
   definition: AgentDefinition;
   status: AgentStatus;
-  sessionId: string | null;
   currentRoomId: string | null;
   totalTokensUsed: number;
   totalCostUsd: number;

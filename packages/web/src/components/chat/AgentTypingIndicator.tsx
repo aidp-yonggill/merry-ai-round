@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useStore } from '@/lib/store';
 
@@ -10,8 +11,11 @@ interface AgentTypingIndicatorProps {
 export function AgentTypingIndicator({ roomId }: AgentTypingIndicatorProps) {
   const t = useTranslations('chat');
   const agents = useStore((s) => s.agents);
-  const activeAgents = agents.filter(
-    (a) => a.currentRoomId === roomId && (a.status === 'thinking' || a.status === 'responding')
+  const activeAgents = useMemo(
+    () => agents.filter(
+      (a) => a.currentRoomId === roomId && (a.status === 'thinking' || a.status === 'responding')
+    ),
+    [agents, roomId],
   );
 
   if (activeAgents.length === 0) return null;

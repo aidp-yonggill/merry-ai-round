@@ -1,3 +1,7 @@
+networks:
+  merry-network:
+    driver: bridge
+
 services:
   daemon:
     build:
@@ -10,7 +14,43 @@ services:
       - ./agents:/app/agents
     env_file:
       - path: .env
-        required: false
+        required: true
     environment:
       - MERRY_ROOT=/app
     restart: unless-stopped
+    networks:
+      - merry-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3141/api/system/health').then(r=>{if(!r.ok)throw r;process.exit(0)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  web:
+    build:
+      context: .
+      dockerfile: packages/web/Dockerfile
+    ports:
+      - "3000:3000"
+    env_file:
+      - path: .env
+        required: true
+    environment:
+      - NEXT_PUBLIC_DAEMON_URL=http://daemon:3141
+    depends_on:
+      daemon:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - merry-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

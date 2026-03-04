@@ -1,21 +1,25 @@
 import type { AgentDefinition, AgentState } from '@merry/shared';
-import { AgentInstance } from '../agent/agent-instance.js';
 import { AgentConfigLoader } from '../agent/agent-config-loader.js';
-import type { MemoryStore } from '../agent/memory-store.js';
 import type { SqliteStore } from '../storage/sqlite-store.js';
 
+export type AgentStatus = 'idle' | 'thinking' | 'responding' | 'error' | 'stopped';
+
+interface ManagedAgent {
+  definition: AgentDefinition;
+  status: AgentStatus;
+  currentRoomId: string | null;
+  totalTokensUsed: number;
+  totalCostUsd: number;
+  lastActiveAt: string | null;
+}
+
 export class AgentManager {
-  private instances: Map<string, AgentInstance> = new Map();
+  private agents = new Map<string, ManagedAgent>();
   private configLoader: AgentConfigLoader;
-  private memoryStore: MemoryStore | null = null;
   private sqliteStore: SqliteStore | null = null;
 
   constructor(agentsDir: string) {
     this.configLoader = new AgentConfigLoader(agentsDir);
-  }
-
-  setMemoryStore(store: MemoryStore): void {
-    this.memoryStore = store;
   }
 
   setSqliteStore(store: SqliteStore): void {
@@ -25,28 +29,35 @@ export class AgentManager {
   loadAll(): void {
     const definitions = this.configLoader.loadAll();
     for (const def of definitions) {
-      if (!this.instances.has(def.id)) {
-        const instance = new AgentInstance(def, this.memoryStore ?? undefined);
+      if (!this.agents.has(def.id)) {
+        const agent: ManagedAgent = {
+          definition: def,
+          status: 'idle',
+          currentRoomId: null,
+          totalTokensUsed: 0,
+          totalCostUsd: 0,
+          lastActiveAt: null,
+        };
 
         // Restore cumulative stats from SQLite
         if (this.sqliteStore) {
           const stats = this.sqliteStore.getAgentCumulativeStats(def.id);
-          instance.totalTokensUsed = stats.totalTokens;
-          instance.totalCostUsd = stats.totalCostUsd;
+          agent.totalTokensUsed = stats.totalTokens;
+          agent.totalCostUsd = stats.totalCostUsd;
         }
 
-        this.instances.set(def.id, instance);
+        this.agents.set(def.id, agent);
       }
     }
     console.log(`[AgentManager] Loaded ${definitions.length} agents: ${definitions.map(d => d.id).join(', ')}`);
   }
 
-  get(agentId: string): AgentInstance | undefined {
-    return this.instances.get(agentId);
+  get(agentId: string): ManagedAgent | undefined {
+    return this.agents.get(agentId);
   }
 
-  getAll(): AgentInstance[] {
-    return Array.from(this.instances.values());
+  getAll(): ManagedAgent[] {
+    return Array.from(this.agents.values());
   }
 
   getAllDefinitions(): AgentDefinition[] {
@@ -55,10 +66,9 @@ export class AgentManager {
 
   getAllStates(): AgentState[] {
     return this.getAll().map(a => ({
-      id: a.id,
+      id: a.definition.id,
       definition: a.definition,
       status: a.status,
-      sessionId: null,
       currentRoomId: a.currentRoomId,
       totalTokensUsed: a.totalTokensUsed,
       totalCostUsd: a.totalCostUsd,
@@ -68,18 +78,15 @@ export class AgentManager {
 
   reload(agentId: string): AgentDefinition {
     const def = this.configLoader.reload(agentId);
-    const existing = this.instances.get(agentId);
-    if (existing) {
-      existing.stop();
-    }
-    this.instances.set(agentId, new AgentInstance(def, this.memoryStore ?? undefined));
+    const existing = this.agents.get(agentId);
+    this.agents.set(agentId, {
+      definition: def,
+      status: 'idle',
+      currentRoomId: null,
+      totalTokensUsed: existing?.totalTokensUsed ?? 0,
+      totalCostUsd: existing?.totalCostUsd ?? 0,
+      lastActiveAt: existing?.lastActiveAt ?? null,
+    });
     return def;
-  }
-
-  stop(agentId: string): void {
-    const instance = this.instances.get(agentId);
-    if (instance) {
-      instance.stop();
-    }
   }
 }

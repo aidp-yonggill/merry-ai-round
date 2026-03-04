@@ -6,6 +6,7 @@ import { Send } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { useApiClient } from '@/hooks/useApiClient';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 interface ChatInputProps {
@@ -18,6 +19,7 @@ export function ChatInput({ roomId }: ChatInputProps) {
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionIndex, setMentionIndex] = useState(0);
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const agents = useStore((s) => s.agents);
   const api = useApiClient();
@@ -25,7 +27,7 @@ export function ChatInput({ roomId }: ChatInputProps) {
   const filteredAgents = useMemo(() =>
     mentionQuery !== null
       ? agents.filter((a) =>
-          a.definition.name.toLowerCase().includes(mentionQuery.toLowerCase())
+          a.definition.name.toLowerCase().includes(mentionQuery.toLowerCase()) || a.definition.slug.toLowerCase().includes(mentionQuery.toLowerCase())
         )
       : [],
     [agents, mentionQuery]
@@ -38,7 +40,7 @@ export function ChatInput({ roomId }: ChatInputProps) {
     // Detect @mention
     const cursorPos = e.target.selectionStart;
     const textBeforeCursor = value.slice(0, cursorPos);
-    const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
+    const mentionMatch = textBeforeCursor.match(/@([^\s]*)$/);
     if (mentionMatch) {
       setMentionQuery(mentionMatch[1]);
       setMentionIndex(0);
@@ -47,14 +49,14 @@ export function ChatInput({ roomId }: ChatInputProps) {
     }
   }, []);
 
-  const insertMention = useCallback((name: string) => {
+  const insertMention = useCallback((slug: string) => {
     const textarea = textareaRef.current;
     if (!textarea) return;
     const cursorPos = textarea.selectionStart;
     const textBefore = text.slice(0, cursorPos);
     const textAfter = text.slice(cursorPos);
     const mentionStart = textBefore.lastIndexOf('@');
-    const newText = textBefore.slice(0, mentionStart) + `@${name} ` + textAfter;
+    const newText = textBefore.slice(0, mentionStart) + `@${slug} ` + textAfter;
     setText(newText);
     setMentionQuery(null);
     textarea.focus();
@@ -65,11 +67,12 @@ export function ChatInput({ roomId }: ChatInputProps) {
     if (!trimmed || sending) return;
 
     setSending(true);
+    setSendError(null);
     try {
       await api.sendMessage(roomId, { content: trimmed });
       setText('');
-    } catch {
-      // TODO: toast
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : 'Failed to send message');
     } finally {
       setSending(false);
     }
@@ -89,7 +92,7 @@ export function ChatInput({ roomId }: ChatInputProps) {
       }
       if (e.key === 'Tab' || e.key === 'Enter') {
         e.preventDefault();
-        insertMention(filteredAgents[mentionIndex].definition.name);
+        insertMention(filteredAgents[mentionIndex].definition.slug);
         return;
       }
       if (e.key === 'Escape') {
@@ -121,19 +124,28 @@ export function ChatInput({ roomId }: ChatInputProps) {
           {filteredAgents.map((agent, i) => (
             <button
               key={agent.id}
-              onClick={() => insertMention(agent.definition.name)}
+              onClick={() => insertMention(agent.definition.slug)}
               className={cn(
                 'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors',
                 i === mentionIndex ? 'bg-accent text-foreground' : 'text-muted-foreground hover:bg-accent/50'
               )}
             >
               <span>{agent.definition.avatar}</span>
+              <Badge variant="outline" className="text-[10px] px-1 py-0" style={{ color: agent.definition.color, borderColor: agent.definition.color + '40' }}>
+                @{agent.definition.slug}
+              </Badge>
               <span className="font-medium" style={{ color: agent.definition.color }}>
                 {agent.definition.name}
               </span>
               <span className="ml-auto text-xs">{agent.definition.model}</span>
             </button>
           ))}
+        </div>
+      )}
+
+      {sendError && (
+        <div className="mb-1 rounded-md bg-destructive/10 px-3 py-1.5 text-xs text-destructive">
+          {sendError}
         </div>
       )}
 

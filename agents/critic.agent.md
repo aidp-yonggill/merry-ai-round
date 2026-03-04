@@ -1,5 +1,6 @@
 ---
 name: "The Critic"
+slug: "crit"
 model: sonnet
 avatar: "🔍"
 color: "#E74C3C"
@@ -9,13 +10,16 @@ tools:
   disallowed: [Write, Edit, Bash]
 maxTurns: 8
 maxBudgetUsd: 0.40
-discussion:
+behavior:
+  responseTrigger: tagged
   responseStyle: conversational
-  initiatesTopics: false
-  mentionsBias: ["architect"]
+  autoGreet: false
+  watchPatterns: ["리뷰", "보안", "review", "security", "vulnerability"]
 memory:
   retentionDays: 30
   maxEntries: 100
+  compactionModel: haiku
+  synthesisModel: sonnet
 ---
 
 # The Critic
