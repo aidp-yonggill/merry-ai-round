@@ -166,7 +166,7 @@ export class ClaudeProcess extends EventEmitter {
         const usage = data.usage ?? data.total_usage ?? {};
         tokensIn = usage.input_tokens ?? usage.tokens_in ?? tokensIn;
         tokensOut = usage.output_tokens ?? usage.tokens_out ?? tokensOut;
-        costUsd = data.cost_usd ?? data.total_cost ?? costUsd;
+        costUsd = data.total_cost_usd ?? data.cost_usd ?? data.total_cost ?? costUsd;
 
         cleanup();
         this._idle = true;
@@ -215,10 +215,13 @@ export class ClaudeProcess extends EventEmitter {
       this.on('error', onError);
       this.on('exit', onExit);
 
-      // Write message to stdin as JSON line
+      // Write message to stdin as JSON line (stream-json v2 format)
       const msg = JSON.stringify({
         type: 'user',
-        content,
+        message: {
+          role: 'user',
+          content: [{ type: 'text', text: content }],
+        },
       });
       this.proc!.stdin!.write(msg + '\n');
     });
