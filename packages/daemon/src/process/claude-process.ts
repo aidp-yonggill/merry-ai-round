@@ -259,6 +259,7 @@ export class ClaudeProcess extends EventEmitter {
   private buildArgs(): string[] {
     const args = [
       '--print',
+      '--verbose',
       '--input-format', 'stream-json',
       '--output-format', 'stream-json',
       '--model', MODEL_MAP[this.options.model] ?? MODEL_MAP.sonnet,
