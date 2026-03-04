@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
+import { NextIntlClientProvider } from 'next-intl';
+import { getLocale, getMessages } from 'next-intl/server';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { AppShell } from '@/components/layout/AppShell';
 import './globals.css';
@@ -26,17 +28,22 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html lang="en" className="dark">
+    <html lang={locale} className="dark">
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
-        <TooltipProvider>
-          <AppShell>{children}</AppShell>
-        </TooltipProvider>
+        <NextIntlClientProvider messages={messages}>
+          <TooltipProvider>
+            <AppShell>{children}</AppShell>
+          </TooltipProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

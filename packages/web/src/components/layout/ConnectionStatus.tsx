@@ -1,9 +1,11 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 
 export function ConnectionStatus() {
+  const t = useTranslations('connection');
   const connected = useStore((s) => s.connected);
 
   return (
@@ -15,7 +17,7 @@ export function ConnectionStatus() {
         )}
       />
       <span className="text-muted-foreground">
-        {connected ? 'Connected' : 'Disconnected'}
+        {connected ? t('connected') : t('disconnected')}
       </span>
     </div>
   );

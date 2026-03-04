@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useStore } from '@/lib/store';
 
 interface AgentTypingIndicatorProps {
@@ -7,6 +8,7 @@ interface AgentTypingIndicatorProps {
 }
 
 export function AgentTypingIndicator({ roomId }: AgentTypingIndicatorProps) {
+  const t = useTranslations('chat');
   const agents = useStore((s) => s.agents);
   const activeAgents = agents.filter(
     (a) => a.currentRoomId === roomId && (a.status === 'thinking' || a.status === 'responding')
@@ -22,7 +24,7 @@ export function AgentTypingIndicator({ roomId }: AgentTypingIndicatorProps) {
           <span className="font-medium" style={{ color: agent.definition.color }}>
             {agent.definition.name}
           </span>
-          <span>is {agent.status === 'thinking' ? 'thinking' : 'responding'}</span>
+          <span>{agent.status === 'thinking' ? t('isThinking') : t('isResponding')}</span>
           <span className="inline-flex gap-0.5">
             <span className="animate-bounce [animation-delay:0ms] text-xs">.</span>
             <span className="animate-bounce [animation-delay:150ms] text-xs">.</span>

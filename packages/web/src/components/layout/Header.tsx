@@ -1,11 +1,13 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { Menu, Settings } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { ConnectionStatus } from './ConnectionStatus';
 
 export function Header() {
+  const t = useTranslations('app');
   const toggleSidebar = useStore((s) => s.toggleSidebar);
 
   return (
@@ -18,7 +20,7 @@ export function Header() {
         >
           <Menu className="h-5 w-5" />
         </button>
-        <h1 className="text-base md:text-lg font-semibold tracking-tight">Merry AI Round</h1>
+        <h1 className="text-base md:text-lg font-semibold tracking-tight">{t('title')}</h1>
         <ConnectionStatus />
       </div>
       <nav className="flex items-center gap-2">

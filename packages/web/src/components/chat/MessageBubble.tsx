@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import type { ChatMessage, AgentState, ToolUseBlock } from '@merry/shared';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ToolUseBlockView } from './ToolUseBlockView';
@@ -31,12 +32,13 @@ function renderContent(text: string) {
 }
 
 export function MessageBubble({ message, agent, streamingContent, activeToolBlocks }: MessageBubbleProps) {
+  const t = useTranslations('chat');
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
   const displayContent = streamingContent ?? message.content;
   const agentColor = agent?.definition.color ?? '#888';
   const agentAvatar = agent?.definition.avatar ?? '?';
-  const agentName = agent?.definition.name ?? 'Unknown';
+  const agentName = agent?.definition.name ?? t('unknown');
 
   if (isSystem) {
     return (
@@ -62,7 +64,7 @@ export function MessageBubble({ message, agent, streamingContent, activeToolBloc
             className="text-sm font-semibold"
             style={!isUser ? { color: agentColor } : undefined}
           >
-            {isUser ? 'You' : agentName}
+            {isUser ? t('you') : agentName}
           </span>
           <span className="text-xs text-muted-foreground">
             {formatTime(message.createdAt)}
@@ -88,7 +90,7 @@ export function MessageBubble({ message, agent, streamingContent, activeToolBloc
         )}
         {message.metadata.tokensUsed && (
           <span className="mt-0.5 text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
-            {message.metadata.tokensUsed} tokens
+            {message.metadata.tokensUsed} {t('tokens')}
             {message.metadata.costUsd ? ` / $${message.metadata.costUsd.toFixed(4)}` : ''}
           </span>
         )}

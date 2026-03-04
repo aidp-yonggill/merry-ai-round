@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useStore } from '@/lib/store';
 import { useApiClient } from '@/hooks/useApiClient';
 import { AgentCard } from '@/components/agents/AgentCard';
@@ -8,6 +9,7 @@ import { AgentDetail } from '@/components/agents/AgentDetail';
 import type { AgentState } from '@merry/shared';
 
 export default function AgentsPage() {
+  const t = useTranslations('agents');
   const agents = useStore((s) => s.agents);
   const setAgents = useStore((s) => s.setAgents);
   const connected = useStore((s) => s.connected);
@@ -22,16 +24,16 @@ export default function AgentsPage() {
   return (
     <div className="h-full overflow-y-auto p-6">
       <div className="mb-6">
-        <h2 className="text-2xl font-semibold tracking-tight">Agents</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">{t('title')}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          {agents.length} agent{agents.length !== 1 ? 's' : ''} loaded
+          {t('loaded', { count: agents.length })}
         </p>
       </div>
       {agents.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-          <p className="text-sm">No agents found.</p>
+          <p className="text-sm">{t('noAgentsFound')}</p>
           <p className="mt-1 text-xs">
-            Add agent markdown files to the agents directory and restart the daemon.
+            {t('addAgentHint')}
           </p>
         </div>
       ) : (

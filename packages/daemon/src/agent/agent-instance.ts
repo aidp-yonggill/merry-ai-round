@@ -118,9 +118,11 @@ export class AgentInstance extends EventEmitter {
           newSessionId = (message as any).session_id;
         }
 
-        // Handle result message (final text output)
-        if ('result' in message) {
-          content = (message as any).result ?? '';
+        // Handle result message (final output with metadata)
+        if (message.type === 'result') {
+          const msg = message as any;
+          content = msg.result ?? '';
+          numTurns = msg.num_turns ?? numTurns;
 
           // Emit final stream chunk
           this.emit('stream', {
@@ -132,16 +134,18 @@ export class AgentInstance extends EventEmitter {
           } satisfies StreamChunk);
         }
 
-        // Handle assistant messages with content
+        // Handle assistant messages — SDK wraps BetaMessage in msg.message
         if (message.type === 'assistant') {
           const msg = message as any;
+          const betaMessage = msg.message ?? msg; // SDK nests under .message
+          const contentBlocks = betaMessage.content;
 
-          // Stream text content
-          if (msg.content) {
-            const textContent = typeof msg.content === 'string'
-              ? msg.content
-              : Array.isArray(msg.content)
-                ? msg.content
+          if (contentBlocks) {
+            // Stream text content
+            const textContent = typeof contentBlocks === 'string'
+              ? contentBlocks
+              : Array.isArray(contentBlocks)
+                ? contentBlocks
                     .filter((b: any) => b.type === 'text')
                     .map((b: any) => b.text)
                     .join('')
@@ -157,10 +161,13 @@ export class AgentInstance extends EventEmitter {
               } satisfies StreamChunk);
             }
 
-            // Extract tool use blocks
-            if (Array.isArray(msg.content)) {
-              for (const block of msg.content) {
+            // Extract tool use blocks from content array
+            if (Array.isArray(contentBlocks)) {
+              for (const block of contentBlocks) {
                 if (block.type === 'tool_use') {
+                  // Avoid duplicate tool blocks (SDK may re-send on resume)
+                  if (toolUseBlocks.some(b => b.id === block.id)) continue;
+
                   const toolBlock: ToolUseBlock = {
                     id: block.id,
                     toolName: block.name,
@@ -180,33 +187,40 @@ export class AgentInstance extends EventEmitter {
                 }
               }
             }
-
-            numTurns++;
           }
         }
 
-        // Handle tool results
-        if (message.type === 'result' || (message as any).type === 'tool_result') {
+        // Handle user messages (tool results from SDK)
+        if (message.type === 'user') {
           const msg = message as any;
-          const toolUseId = msg.tool_use_id;
-          if (toolUseId) {
-            const block = toolUseBlocks.find(b => b.id === toolUseId);
-            if (block) {
-              block.status = msg.is_error ? 'error' : 'completed';
-              block.output = typeof msg.content === 'string'
-                ? msg.content
-                : JSON.stringify(msg.content);
-            }
+          const userContent = msg.message?.content ?? msg.content;
+          if (Array.isArray(userContent)) {
+            for (const block of userContent) {
+              if (block.type === 'tool_result') {
+                const toolUseId = block.tool_use_id;
+                if (toolUseId) {
+                  const toolBlock = toolUseBlocks.find(b => b.id === toolUseId);
+                  if (toolBlock) {
+                    toolBlock.status = block.is_error ? 'error' : 'completed';
+                    toolBlock.output = typeof block.content === 'string'
+                      ? block.content
+                      : Array.isArray(block.content)
+                        ? block.content.map((c: any) => c.text ?? '').join('')
+                        : JSON.stringify(block.content);
+                  }
 
-            this.emit('tool_complete', {
-              messageId,
-              roomId,
-              agentId: this.id,
-              toolUseId,
-              toolName: block?.toolName ?? 'unknown',
-              output: block?.output,
-              isError: !!msg.is_error,
-            });
+                  this.emit('tool_complete', {
+                    messageId,
+                    roomId,
+                    agentId: this.id,
+                    toolUseId,
+                    toolName: toolBlock?.toolName ?? 'unknown',
+                    output: toolBlock?.output,
+                    isError: !!block.is_error,
+                  });
+                }
+              }
+            }
           }
         }
       }

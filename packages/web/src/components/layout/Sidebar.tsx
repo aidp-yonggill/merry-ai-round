@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Hash, Users, Plus, MessageSquare } from 'lucide-react';
@@ -10,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+  const t = useTranslations('sidebar');
   const rooms = useStore((s) => s.rooms);
   const pathname = usePathname();
 
@@ -17,7 +19,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
     <>
       <div className="flex items-center justify-between px-4 py-3">
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Rooms
+          {t('rooms')}
         </span>
         <Link
           href="/rooms/new"
@@ -30,7 +32,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       <nav className="flex-1 overflow-y-auto px-2">
         {rooms.length === 0 && (
           <p className="px-2 py-4 text-xs text-muted-foreground">
-            No rooms yet
+            {t('noRoomsYet')}
           </p>
         )}
         {rooms.map((room) => {
@@ -72,7 +74,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           )}
         >
           <Users className="h-4 w-4" />
-          <span>Agents</span>
+          <span>{t('agents')}</span>
         </Link>
       </div>
     </>
@@ -99,13 +101,14 @@ export function Sidebar() {
 }
 
 export function MobileSidebar() {
+  const t = useTranslations('sidebar');
   const sidebarOpen = useStore((s) => s.sidebarOpen);
   const setSidebarOpen = useStore((s) => s.setSidebarOpen);
 
   return (
     <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
       <SheetContent side="left" className="w-60 p-0 gap-0" showCloseButton={false}>
-        <SheetTitle className="sr-only">Navigation</SheetTitle>
+        <SheetTitle className="sr-only">{t('navigation')}</SheetTitle>
         <div className="flex h-full flex-col">
           <SidebarContent onNavigate={() => setSidebarOpen(false)} />
         </div>

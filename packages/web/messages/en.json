@@ -1,0 +1,130 @@
+{
+  "app": {
+    "title": "Merry AI Round",
+    "description": "Multi-agent AI discussion platform"
+  },
+  "connection": {
+    "connected": "Connected",
+    "disconnected": "Disconnected"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "connectedToDaemon": "Connected to daemon",
+    "notConnected": "Not connected",
+    "newRoom": "New Room",
+    "rooms": "Rooms",
+    "agents": "Agents",
+    "uptime": "Uptime",
+    "uptimePlaceholder": "--",
+    "totalCost": "Total Cost",
+    "agentStatus": "Agent Status",
+    "noAgentsLoaded": "No agents loaded",
+    "noRoomsYet": "No rooms yet",
+    "members": "members",
+    "active": "active",
+    "in": "in"
+  },
+  "agents": {
+    "title": "Agents",
+    "loaded": "{count, plural, one {# agent} other {# agents}} loaded",
+    "noAgentsFound": "No agents found.",
+    "addAgentHint": "Add agent markdown files to the agents directory and restart the daemon.",
+    "model": "Model",
+    "maxTurns": "Max Turns",
+    "tokensUsed": "Tokens Used",
+    "cost": "Cost",
+    "budget": "Budget",
+    "responseStyle": "Response Style",
+    "tags": "Tags",
+    "persona": "Persona",
+    "tools": "Tools",
+    "allowed": "Allowed:",
+    "disallowed": "Disallowed:",
+    "max": "max",
+    "turns": "turns",
+    "tokensUsedShort": "tokens used"
+  },
+  "agentStatus": {
+    "idle": "Idle",
+    "thinking": "Thinking",
+    "responding": "Responding",
+    "error": "Error",
+    "stopped": "Stopped"
+  },
+  "rooms": {
+    "title": "Rooms",
+    "noRoomsYet": "No rooms yet"
+  },
+  "createRoom": {
+    "title": "Create Room",
+    "description": "Set up a new discussion room with AI agents.",
+    "roomName": "Room Name",
+    "roomNamePlaceholder": "e.g. Design Review",
+    "type": "Type",
+    "group": "Group",
+    "directMessage": "Direct Message",
+    "turnStrategy": "Turn Strategy",
+    "roundRobin": "Round Robin",
+    "roundRobinDesc": "Agents take turns in order",
+    "freeForm": "Free Form",
+    "freeFormDesc": "Agents respond naturally",
+    "directed": "Directed",
+    "directedDesc": "You assign each turn",
+    "moderated": "Moderated",
+    "moderatedDesc": "AI moderates the discussion",
+    "selectAgents": "Select Agents ({count} selected)",
+    "noAgentsAvailable": "No agents available. Connect to the daemon first.",
+    "creating": "Creating...",
+    "createRoom": "Create Room"
+  },
+  "settings": {
+    "title": "Settings",
+    "description": "Configure your connection to the Merry daemon.",
+    "daemonUrl": "Daemon URL",
+    "daemonUrlHint": "The base URL of your running Merry daemon instance.",
+    "save": "Save",
+    "testing": "Testing...",
+    "testConnection": "Test Connection",
+    "connectionSuccess": "Connected! Status: {status}, Uptime: {uptime}s, Agents: {agents}, Rooms: {rooms}",
+    "connectionFailed": "Connection failed"
+  },
+  "chat": {
+    "placeholder": "Type a message... (@ to mention an agent)",
+    "noMessages": "No messages yet. Start a conversation or begin a discussion.",
+    "you": "You",
+    "unknown": "Unknown",
+    "tokens": "tokens",
+    "isThinking": "is thinking",
+    "isResponding": "is responding",
+    "noAgents": "No agents"
+  },
+  "discussion": {
+    "start": "Start",
+    "pause": "Pause",
+    "stop": "Stop",
+    "resume": "Resume",
+    "assign": "Assign",
+    "turn": "Turn",
+    "idle": "idle",
+    "running": "running",
+    "paused": "paused",
+    "stopped": "stopped"
+  },
+  "toolUse": {
+    "input": "Input",
+    "output": "Output",
+    "toolsUsed": "{count, plural, one {# tool} other {# tools}} used",
+    "running": "running",
+    "failed": "failed",
+    "allDone": "all done"
+  },
+  "sidebar": {
+    "rooms": "Rooms",
+    "agents": "Agents",
+    "noRoomsYet": "No rooms yet",
+    "navigation": "Navigation"
+  },
+  "close": "Close",
+  "cancel": "Cancel",
+  "create": "Create"
+}

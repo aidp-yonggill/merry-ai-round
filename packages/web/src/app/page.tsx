@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Plus, MessageSquare, Users, Activity, DollarSign } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { useApiClient } from '@/hooks/useApiClient';
@@ -11,6 +12,7 @@ import { AgentStatusBadge } from '@/components/agents/AgentStatusBadge';
 import type { SystemHealth, CostSummary } from '@merry/shared';
 
 export default function DashboardPage() {
+  const t = useTranslations('dashboard');
   const agents = useStore((s) => s.agents);
   const rooms = useStore((s) => s.rooms);
   const setAgents = useStore((s) => s.setAgents);
@@ -37,16 +39,16 @@ export default function DashboardPage() {
     <div className="h-full overflow-y-auto p-6">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Dashboard</h2>
+          <h2 className="text-2xl font-semibold tracking-tight">{t('title')}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {connected ? 'Connected to daemon' : 'Not connected'}
+            {connected ? t('connectedToDaemon') : t('notConnected')}
           </p>
         </div>
         <div className="flex gap-2">
           <Link href="/rooms/new">
             <Button size="sm" variant="outline">
               <Plus className="mr-1 h-3.5 w-3.5" />
-              New Room
+              {t('newRoom')}
             </Button>
           </Link>
         </div>
@@ -56,7 +58,7 @@ export default function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Rooms</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('rooms')}</CardTitle>
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -65,32 +67,32 @@ export default function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Agents</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('agents')}</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{agents.length}</div>
             {activeAgents.length > 0 && (
               <p className="text-xs text-muted-foreground">
-                {activeAgents.length} active
+                {activeAgents.length} {t('active')}
               </p>
             )}
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Uptime</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('uptime')}</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {health ? formatUptime(health.uptime) : '--'}
+              {health ? formatUptime(health.uptime) : t('uptimePlaceholder')}
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Cost</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('totalCost')}</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -104,11 +106,11 @@ export default function DashboardPage() {
       {/* Agent Status */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle className="text-base">Agent Status</CardTitle>
+          <CardTitle className="text-base">{t('agentStatus')}</CardTitle>
         </CardHeader>
         <CardContent>
           {agents.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No agents loaded</p>
+            <p className="text-sm text-muted-foreground">{t('noAgentsLoaded')}</p>
           ) : (
             <div className="space-y-2">
               {agents.map((agent) => (
@@ -123,7 +125,7 @@ export default function DashboardPage() {
                   <AgentStatusBadge status={agent.status} />
                   {agent.currentRoomId && (
                     <span className="text-xs text-muted-foreground">
-                      in {rooms.find((r) => r.id === agent.currentRoomId)?.name ?? agent.currentRoomId}
+                      {t('in')} {rooms.find((r) => r.id === agent.currentRoomId)?.name ?? agent.currentRoomId}
                     </span>
                   )}
                   <span className="ml-auto text-xs text-muted-foreground">
@@ -139,11 +141,11 @@ export default function DashboardPage() {
       {/* Recent Rooms */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Rooms</CardTitle>
+          <CardTitle className="text-base">{t('rooms')}</CardTitle>
         </CardHeader>
         <CardContent>
           {rooms.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No rooms yet</p>
+            <p className="text-sm text-muted-foreground">{t('noRoomsYet')}</p>
           ) : (
             <div className="space-y-2">
               {rooms.map((room) => (
@@ -157,7 +159,7 @@ export default function DashboardPage() {
                   <span className="text-xs text-muted-foreground">{room.type}</span>
                   <span className="text-xs text-muted-foreground">{room.turnStrategy}</span>
                   <span className="ml-auto text-xs text-muted-foreground">
-                    {room.members.length} members
+                    {room.members.length} {t('members')}
                   </span>
                 </Link>
               ))}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import type { ToolUseBlock } from '@merry/shared';
 import { cn } from '@/lib/utils';
 
@@ -49,6 +50,7 @@ function formatInput(input: Record<string, unknown>): string {
 }
 
 function ToolUseItem({ block }: { block: ToolUseBlock }) {
+  const t = useTranslations('toolUse');
   const [expanded, setExpanded] = useState(false);
   const icon = TOOL_ICONS[block.toolName] ?? '🔧';
   const inputSummary = formatInput(block.input);
@@ -78,7 +80,7 @@ function ToolUseItem({ block }: { block: ToolUseBlock }) {
         <div className="border-t border-border/50 bg-background/50 px-2.5 py-2 space-y-1.5">
           {Object.keys(block.input).length > 0 && (
             <div>
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Input</div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">{t('input')}</div>
               <pre className="text-xs font-mono text-foreground/70 whitespace-pre-wrap break-all max-h-40 overflow-auto">
                 {JSON.stringify(block.input, null, 2)}
               </pre>
@@ -86,7 +88,7 @@ function ToolUseItem({ block }: { block: ToolUseBlock }) {
           )}
           {block.output && (
             <div>
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Output</div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">{t('output')}</div>
               <pre className="text-xs font-mono text-foreground/70 whitespace-pre-wrap break-all max-h-40 overflow-auto">
                 {block.output.slice(0, 2000)}
                 {block.output.length > 2000 && '...'}
@@ -100,6 +102,7 @@ function ToolUseItem({ block }: { block: ToolUseBlock }) {
 }
 
 export function ToolUseBlockView({ blocks }: ToolUseBlockViewProps) {
+  const t = useTranslations('toolUse');
   const [collapsed, setCollapsed] = useState(false);
   if (blocks.length === 0) return null;
 
@@ -115,11 +118,11 @@ export function ToolUseBlockView({ blocks }: ToolUseBlockViewProps) {
       >
         <span>{collapsed ? '▸' : '▾'}</span>
         <span>
-          {blocks.length} tool{blocks.length !== 1 ? 's' : ''} used
-          {running > 0 && <span className="text-yellow-500 ml-1">({running} running)</span>}
-          {errors > 0 && <span className="text-red-500 ml-1">({errors} failed)</span>}
+          {t('toolsUsed', { count: blocks.length })}
+          {running > 0 && <span className="text-yellow-500 ml-1">({running} {t('running')})</span>}
+          {errors > 0 && <span className="text-red-500 ml-1">({errors} {t('failed')})</span>}
           {running === 0 && errors === 0 && completed > 0 && (
-            <span className="text-green-500 ml-1">(all done)</span>
+            <span className="text-green-500 ml-1">({t('allDone')})</span>
           )}
         </span>
       </button>

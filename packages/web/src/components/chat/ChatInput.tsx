@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { Send } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { useApiClient } from '@/hooks/useApiClient';
@@ -12,6 +13,7 @@ interface ChatInputProps {
 }
 
 export function ChatInput({ roomId }: ChatInputProps) {
+  const t = useTranslations('chat');
   const [text, setText] = useState('');
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionIndex, setMentionIndex] = useState(0);
@@ -141,7 +143,7 @@ export function ChatInput({ roomId }: ChatInputProps) {
           value={text}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          placeholder="Type a message... (@ to mention an agent)"
+          placeholder={t('placeholder')}
           rows={1}
           className="flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[44px] ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         />

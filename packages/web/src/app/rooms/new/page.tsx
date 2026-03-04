@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useStore } from '@/lib/store';
 import { useApiClient } from '@/hooks/useApiClient';
 import { Input } from '@/components/ui/input';
@@ -9,14 +10,8 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { RoomType, TurnStrategy } from '@merry/shared';
 
-const TURN_STRATEGIES: { value: TurnStrategy; label: string; desc: string }[] = [
-  { value: 'round-robin', label: 'Round Robin', desc: 'Agents take turns in order' },
-  { value: 'free-form', label: 'Free Form', desc: 'Agents respond naturally' },
-  { value: 'directed', label: 'Directed', desc: 'You assign each turn' },
-  { value: 'moderated', label: 'Moderated', desc: 'AI moderates the discussion' },
-];
-
 export default function NewRoomPage() {
+  const t = useTranslations('createRoom');
   const [name, setName] = useState('');
   const [type, setType] = useState<RoomType>('group');
   const [strategy, setStrategy] = useState<TurnStrategy>('round-robin');
@@ -27,6 +22,13 @@ export default function NewRoomPage() {
   const addRoom = useStore((s) => s.addRoom);
   const api = useApiClient();
   const router = useRouter();
+
+  const turnStrategies: { value: TurnStrategy; label: string; desc: string }[] = [
+    { value: 'round-robin', label: t('roundRobin'), desc: t('roundRobinDesc') },
+    { value: 'free-form', label: t('freeForm'), desc: t('freeFormDesc') },
+    { value: 'directed', label: t('directed'), desc: t('directedDesc') },
+    { value: 'moderated', label: t('moderated'), desc: t('moderatedDesc') },
+  ];
 
   const toggleAgent = useCallback((id: string) => {
     setSelectedAgents((prev) =>
@@ -55,23 +57,23 @@ export default function NewRoomPage() {
 
   return (
     <div className="mx-auto max-w-lg p-8">
-      <h2 className="text-2xl font-semibold tracking-tight">Create Room</h2>
+      <h2 className="text-2xl font-semibold tracking-tight">{t('title')}</h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        Set up a new discussion room with AI agents.
+        {t('description')}
       </p>
 
       <div className="mt-8 space-y-6">
         <div className="space-y-2">
-          <label className="text-sm font-medium">Room Name</label>
+          <label className="text-sm font-medium">{t('roomName')}</label>
           <Input
-            placeholder="e.g. Design Review"
+            placeholder={t('roomNamePlaceholder')}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium">Type</label>
+          <label className="text-sm font-medium">{t('type')}</label>
           <div className="flex gap-2">
             {(['group', 'dm'] as const).map((rt) => (
               <button
@@ -84,16 +86,16 @@ export default function NewRoomPage() {
                     : 'border-border text-muted-foreground hover:border-primary/50'
                 )}
               >
-                {rt === 'group' ? 'Group' : 'Direct Message'}
+                {rt === 'group' ? t('group') : t('directMessage')}
               </button>
             ))}
           </div>
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium">Turn Strategy</label>
+          <label className="text-sm font-medium">{t('turnStrategy')}</label>
           <div className="grid grid-cols-2 gap-2">
-            {TURN_STRATEGIES.map((ts) => (
+            {turnStrategies.map((ts) => (
               <button
                 key={ts.value}
                 onClick={() => setStrategy(ts.value)}
@@ -113,11 +115,11 @@ export default function NewRoomPage() {
 
         <div className="space-y-2">
           <label className="text-sm font-medium">
-            Select Agents ({selectedAgents.length} selected)
+            {t('selectAgents', { count: selectedAgents.length })}
           </label>
           {agents.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No agents available. Connect to the daemon first.
+              {t('noAgentsAvailable')}
             </p>
           ) : (
             <div className="space-y-1">
@@ -150,7 +152,7 @@ export default function NewRoomPage() {
           disabled={!name.trim() || selectedAgents.length === 0 || creating}
           className="w-full"
         >
-          {creating ? 'Creating...' : 'Create Room'}
+          {creating ? t('creating') : t('createRoom')}
         </Button>
       </div>
     </div>

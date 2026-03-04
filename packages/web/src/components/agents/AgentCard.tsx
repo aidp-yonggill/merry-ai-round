@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import type { AgentState } from '@merry/shared';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,6 +13,7 @@ interface AgentCardProps {
 }
 
 export function AgentCard({ agent, onClick }: AgentCardProps) {
+  const t = useTranslations('agents');
   const { definition: def } = agent;
 
   return (
@@ -37,7 +39,7 @@ export function AgentCard({ agent, onClick }: AgentCardProps) {
               <AgentStatusBadge status={agent.status} />
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              {def.model} / max {def.maxTurns} turns / ${def.maxBudgetUsd.toFixed(2)} budget
+              {def.model} / {t('max')} {def.maxTurns} {t('turns')} / ${def.maxBudgetUsd.toFixed(2)} {t('budget')}
             </p>
             <div className="mt-2 flex flex-wrap gap-1">
               {def.tags.map((tag) => (
@@ -49,7 +51,7 @@ export function AgentCard({ agent, onClick }: AgentCardProps) {
           </div>
         </div>
         <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-          <span>{agent.totalTokensUsed.toLocaleString()} tokens used</span>
+          <span>{agent.totalTokensUsed.toLocaleString()} {t('tokensUsedShort')}</span>
           <span>${agent.totalCostUsd.toFixed(4)}</span>
         </div>
       </CardContent>

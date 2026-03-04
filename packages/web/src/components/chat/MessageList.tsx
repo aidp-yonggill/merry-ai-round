@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { useStore } from '@/lib/store';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MessageBubble } from './MessageBubble';
@@ -13,6 +14,7 @@ interface MessageListProps {
 }
 
 export function MessageList({ roomId }: MessageListProps) {
+  const t = useTranslations('chat');
   const messages = useStore((s) => s.messages.get(roomId) ?? EMPTY_MESSAGES);
   const streamingMessages = useStore((s) => s.streamingMessages);
   const activeToolBlocks = useStore((s) => s.activeToolBlocks);
@@ -33,7 +35,7 @@ export function MessageList({ roomId }: MessageListProps) {
         {messages.length === 0 && (
           <div className="flex flex-1 items-center justify-center py-16">
             <p className="text-sm text-muted-foreground">
-              No messages yet. Start a conversation or begin a discussion.
+              {t('noMessages')}
             </p>
           </div>
         )}

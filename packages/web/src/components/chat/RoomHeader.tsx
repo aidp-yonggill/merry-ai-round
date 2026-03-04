@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useStore } from '@/lib/store';
 import { Separator } from '@/components/ui/separator';
 import { DiscussionControls } from './DiscussionControls';
@@ -9,6 +10,7 @@ interface RoomHeaderProps {
 }
 
 export function RoomHeader({ roomId }: RoomHeaderProps) {
+  const t = useTranslations('chat');
   const rooms = useStore((s) => s.rooms);
   const agents = useStore((s) => s.agents);
   const room = rooms.find((r) => r.id === roomId);
@@ -33,7 +35,7 @@ export function RoomHeader({ roomId }: RoomHeaderProps) {
             </span>
           ))}
           {memberAgents.length === 0 && (
-            <span className="text-xs text-muted-foreground">No agents</span>
+            <span className="text-xs text-muted-foreground">{t('noAgents')}</span>
           )}
         </div>
         <span className="text-xs text-muted-foreground">

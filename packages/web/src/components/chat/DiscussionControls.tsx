@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Play, Pause, Square, SkipForward } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { useApiClient } from '@/hooks/useApiClient';
@@ -18,6 +19,7 @@ interface DiscussionControlsProps {
 }
 
 export function DiscussionControls({ roomId }: DiscussionControlsProps) {
+  const t = useTranslations('discussion');
   const discussion = useStore((s) => s.discussionStates.get(roomId));
   const agents = useStore((s) => s.agents);
   const rooms = useStore((s) => s.rooms);
@@ -49,7 +51,7 @@ export function DiscussionControls({ roomId }: DiscussionControlsProps) {
         }
         className="text-xs"
       >
-        {status}
+        {t(status)}
       </Badge>
 
       {status === 'idle' || status === 'stopped' ? (
@@ -60,7 +62,7 @@ export function DiscussionControls({ roomId }: DiscussionControlsProps) {
           disabled={loading}
         >
           <Play className="mr-1 h-3 w-3" />
-          Start
+          {t('start')}
         </Button>
       ) : status === 'running' ? (
         <>
@@ -71,7 +73,7 @@ export function DiscussionControls({ roomId }: DiscussionControlsProps) {
             disabled={loading}
           >
             <Pause className="mr-1 h-3 w-3" />
-            Pause
+            {t('pause')}
           </Button>
           <Button
             size="sm"
@@ -80,7 +82,7 @@ export function DiscussionControls({ roomId }: DiscussionControlsProps) {
             disabled={loading}
           >
             <Square className="mr-1 h-3 w-3" />
-            Stop
+            {t('stop')}
           </Button>
         </>
       ) : status === 'paused' ? (
@@ -92,7 +94,7 @@ export function DiscussionControls({ roomId }: DiscussionControlsProps) {
             disabled={loading}
           >
             <Play className="mr-1 h-3 w-3" />
-            Resume
+            {t('resume')}
           </Button>
           <Button
             size="sm"
@@ -101,7 +103,7 @@ export function DiscussionControls({ roomId }: DiscussionControlsProps) {
             disabled={loading}
           >
             <Square className="mr-1 h-3 w-3" />
-            Stop
+            {t('stop')}
           </Button>
         </>
       ) : null}
@@ -112,7 +114,7 @@ export function DiscussionControls({ roomId }: DiscussionControlsProps) {
           <DropdownMenuTrigger asChild>
             <Button size="sm" variant="ghost">
               <SkipForward className="mr-1 h-3 w-3" />
-              Assign
+              {t('assign')}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -131,7 +133,7 @@ export function DiscussionControls({ roomId }: DiscussionControlsProps) {
 
       {discussion && discussion.totalTurns > 0 && (
         <span className="text-xs text-muted-foreground">
-          Turn {discussion.totalTurns}
+          {t('turn')} {discussion.totalTurns}
         </span>
       )}
     </div>
