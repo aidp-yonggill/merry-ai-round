@@ -13,11 +13,14 @@ const config = {
   port: PORT,
   agentsDir: path.resolve(ROOT_DIR, 'agents'),
   dataDir: path.resolve(ROOT_DIR, 'data'),
+  apiKey: process.env.MERRY_API_KEY,
   corsOrigins: [
     'http://localhost:3000',
     'http://localhost:3141',
     // Vercel preview/production URLs
     /^https:\/\/.*\.vercel\.app$/,
+    // ngrok tunnel URLs
+    /^https:\/\/.*\.ngrok-free\.app$/,
   ],
 };
 
@@ -32,6 +35,7 @@ const server = app.listen(config.port, () => {
 
   Agents: ${config.agentsDir}
   Data:   ${config.dataDir}
+  Auth:   ${config.apiKey ? 'API Key (enabled)' : 'none (local only)'}
   CLI:    ${process.env.CLAUDE_CLI_PATH ?? 'claude (default)'}
   `);
 });

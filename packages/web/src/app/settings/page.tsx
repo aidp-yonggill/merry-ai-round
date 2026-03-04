@@ -9,20 +9,24 @@ export default function SettingsPage() {
   const t = useTranslations('settings');
   const daemonUrl = useStore((s) => s.daemonUrl);
   const setDaemonUrl = useStore((s) => s.setDaemonUrl);
+  const apiKey = useStore((s) => s.apiKey);
+  const setApiKey = useStore((s) => s.setApiKey);
 
   const [urlInput, setUrlInput] = useState(daemonUrl);
+  const [apiKeyInput, setApiKeyInput] = useState(apiKey);
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [testMessage, setTestMessage] = useState('');
 
   const handleSave = useCallback(() => {
     setDaemonUrl(urlInput.replace(/\/+$/, ''));
-  }, [urlInput, setDaemonUrl]);
+    setApiKey(apiKeyInput);
+  }, [urlInput, setDaemonUrl, apiKeyInput, setApiKey]);
 
   const handleTest = useCallback(async () => {
     setTestStatus('testing');
     setTestMessage('');
     try {
-      const client = new ApiClient(urlInput.replace(/\/+$/, ''));
+      const client = new ApiClient(urlInput.replace(/\/+$/, ''), apiKeyInput || undefined);
       const health = await client.health();
       setTestStatus('success');
       setTestMessage(
@@ -37,7 +41,7 @@ export default function SettingsPage() {
       setTestStatus('error');
       setTestMessage(err instanceof Error ? err.message : t('connectionFailed'));
     }
-  }, [urlInput, t]);
+  }, [urlInput, apiKeyInput, t]);
 
   return (
     <div className="mx-auto max-w-xl p-8">
@@ -61,6 +65,23 @@ export default function SettingsPage() {
           />
           <p className="text-xs text-muted-foreground">
             {t('daemonUrlHint')}
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="api-key" className="text-sm font-medium">
+            {t('apiKey')}
+          </label>
+          <input
+            id="api-key"
+            type="password"
+            value={apiKeyInput}
+            onChange={(e) => setApiKeyInput(e.target.value)}
+            placeholder={t('apiKeyPlaceholder')}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          />
+          <p className="text-xs text-muted-foreground">
+            {t('apiKeyHint')}
           </p>
         </div>
 

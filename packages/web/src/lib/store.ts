@@ -12,8 +12,10 @@ const DEFAULT_DAEMON_URL = 'http://localhost:3141';
 interface AppStore {
   // Connection
   daemonUrl: string;
+  apiKey: string;
   connected: boolean;
   setDaemonUrl: (url: string) => void;
+  setApiKey: (key: string) => void;
   setConnected: (connected: boolean) => void;
 
   // Agents
@@ -112,12 +114,25 @@ export const useStore = create<AppStore>((set, get) => {
   daemonUrl: typeof window !== 'undefined'
     ? localStorage.getItem('merry-daemon-url') ?? DEFAULT_DAEMON_URL
     : DEFAULT_DAEMON_URL,
+  apiKey: typeof window !== 'undefined'
+    ? localStorage.getItem('merry-api-key') ?? ''
+    : '',
   connected: false,
   setDaemonUrl: (url) => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('merry-daemon-url', url);
     }
     set({ daemonUrl: url });
+  },
+  setApiKey: (key) => {
+    if (typeof window !== 'undefined') {
+      if (key) {
+        localStorage.setItem('merry-api-key', key);
+      } else {
+        localStorage.removeItem('merry-api-key');
+      }
+    }
+    set({ apiKey: key });
   },
   setConnected: (connected) => set({ connected }),
 

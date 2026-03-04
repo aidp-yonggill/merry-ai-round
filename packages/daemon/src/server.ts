@@ -26,6 +26,7 @@ export interface DaemonConfig {
   agentsDir: string;
   dataDir: string;
   corsOrigins: (string | RegExp)[];
+  apiKey?: string;
 }
 
 export function createServer(config: DaemonConfig): { app: express.Express; shutdown: () => void } {
@@ -38,6 +39,22 @@ export function createServer(config: DaemonConfig): { app: express.Express; shut
     credentials: true,
   }));
   app.use(express.json());
+
+  // API Key authentication (skip if not configured)
+  if (config.apiKey) {
+    app.use((req, res, next) => {
+      // Allow health check without auth
+      if (req.path === '/api/system/health') return next();
+
+      const key = req.headers['x-api-key'] as string | undefined
+        ?? req.query.apiKey as string | undefined;
+      if (key !== config.apiKey) {
+        res.status(401).json({ ok: false, error: 'Invalid API key' } satisfies ApiResponse);
+        return;
+      }
+      next();
+    });
+  }
 
   // Initialize stores
   const store = new SqliteStore(config.dataDir);

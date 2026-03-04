@@ -6,5 +6,6 @@ import { ApiClient } from '@/lib/api-client';
 
 export function useApiClient() {
   const daemonUrl = useStore((s) => s.daemonUrl);
-  return useMemo(() => new ApiClient(daemonUrl), [daemonUrl]);
+  const apiKey = useStore((s) => s.apiKey);
+  return useMemo(() => new ApiClient(daemonUrl, apiKey || undefined), [daemonUrl, apiKey]);
 }

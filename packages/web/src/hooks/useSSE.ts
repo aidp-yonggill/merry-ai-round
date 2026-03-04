@@ -8,6 +8,7 @@ const HEARTBEAT_TIMEOUT_MS = 45_000;
 
 export function useSSE() {
   const daemonUrl = useStore((s) => s.daemonUrl);
+  const apiKey = useStore((s) => s.apiKey);
   const setConnected = useStore((s) => s.setConnected);
   const addMessage = useStore((s) => s.addMessage);
   const appendStreamChunk = useStore((s) => s.appendStreamChunk);
@@ -52,7 +53,10 @@ export function useSSE() {
       }, delay);
     };
 
-    const es = new EventSource(`${daemonUrl}/api/events`);
+    const sseUrl = apiKey
+      ? `${daemonUrl}/api/events?apiKey=${encodeURIComponent(apiKey)}`
+      : `${daemonUrl}/api/events`;
+    const es = new EventSource(sseUrl);
     esRef.current = es;
 
     es.onopen = () => {
@@ -139,7 +143,7 @@ export function useSSE() {
       // Exponential backoff reconnect: apply delay first, then multiply
       scheduleReconnect();
     };
-  }, [daemonUrl, setConnected, addMessage, appendStreamChunk, clearStream, updateAgentStatus, addToolBlock, updateToolBlock, setRoomInstances, updateInstance, removeInstance]);
+  }, [daemonUrl, apiKey, setConnected, addMessage, appendStreamChunk, clearStream, updateAgentStatus, addToolBlock, updateToolBlock, setRoomInstances, updateInstance, removeInstance]);
 
   useEffect(() => {
     connect();

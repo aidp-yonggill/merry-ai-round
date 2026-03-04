@@ -44,18 +44,26 @@ export class ApiError extends Error {
 }
 
 export class ApiClient {
-  constructor(private baseUrl: string) {}
+  constructor(private baseUrl: string, private apiKey?: string) {}
 
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...init?.headers as Record<string, string>,
+    };
+    if (this.apiKey) {
+      headers['X-API-Key'] = this.apiKey;
+    }
 
     let res: Response;
     try {
       res = await fetch(`${this.baseUrl}${path}`, {
         ...init,
         signal: controller.signal,
-        headers: { 'Content-Type': 'application/json', ...init?.headers },
+        headers,
       });
     } catch (err) {
       clearTimeout(timeoutId);
