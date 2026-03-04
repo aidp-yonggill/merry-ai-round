@@ -134,6 +134,7 @@
   },
   "chat": {
     "placeholder": "Type a message... (@ to mention an agent)",
+    "loadingMore": "Loading...",
     "noMessages": "No messages yet. Start a conversation or begin a discussion.",
     "you": "You",
     "unknown": "Unknown",
